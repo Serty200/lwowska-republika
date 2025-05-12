@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Opinie</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      background-color: #004080;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    main {
+      padding: 20px;
+    }
+    section {
+      background-color: white;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 800px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    input, textarea, button {
+      font-family: 'Inter', sans-serif;
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #004080;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #002050;
+    }
+    .opinia {
+      background-color: #e6e6e6;
+      border-left: 4px solid #004080;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .nick {
+      font-weight: bold;
+      color: #004080;
+    }
+  </style>
+  <script>
+    function dodajOpinie(event) {
+      event.preventDefault();
+
+      const nick = document.getElementById('nick').value.trim();
+      const opinia = document.getElementById('opinia').value.trim();
+
+      if (!nick || !opinia) return;
+
+      const container = document.getElementById('opinie-lista');
+      const div = document.createElement('div');
+      div.className = 'opinia';
+      div.innerHTML = '<span class="nick">' + nick + ':</span> ' + opinia;
+
+      container.prepend(div);
+
+      document.getElementById('nick').value = '';
+      document.getElementById('opinia').value = '';
+    }
+  </script>
+</head>
+<body>
+
+<header>
+  <h1>Opinie obywateli</h1>
+</header>
+
+<main>
+  <section>
+    <h2>Wyślij swoją opinię</h2>
+    <form onsubmit="dodajOpinie(event)">
+      <label for="nick">Twój nick:</label>
+      <input type="text" id="nick" name="nick" required>
+
+      <label for="opinia">Twoja opinia:</label>
+      <textarea id="opinia" name="opinia" rows="5" required></textarea>
+
+      <button type="submit">Wyślij</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Publiczne opinie</h2>
+    <div id="opinie-lista"></div>
+  </section>
+</main>
+
+</body>
+</html>
