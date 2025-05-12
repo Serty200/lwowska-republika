@@ -8,7 +8,6 @@
     body {
       font-family: 'Inter', sans-serif;
       background-color: #f2f2f2;
-      margin: 0;
       padding: 20px;
     }
     form {
@@ -16,44 +15,55 @@
       padding: 20px;
       border-radius: 10px;
       max-width: 600px;
-      margin: 0 auto;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin: auto;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    input, textarea, button {
+    input, textarea {
       width: 100%;
       padding: 10px;
       margin-top: 10px;
-      margin-bottom: 15px;
-      border-radius: 5px;
+      margin-bottom: 20px;
       border: 1px solid #ccc;
+      border-radius: 5px;
     }
     button {
-      background-color: #004080;
+      background-color: #0066cc;
       color: white;
+      padding: 10px 20px;
       border: none;
+      border-radius: 5px;
       cursor: pointer;
-    }
-    button:hover {
-      background-color: #002050;
     }
   </style>
 </head>
 <body>
   <h1>Skontaktuj się z nami</h1>
-  <form>
+  <form id="kontakt-form">
     <label>Imię i Nazwisko roleplay bądź swój zwykły nick</label>
-    <input type="text" name="imienazwisko" required>
+    <input type="text" id="nick" required>
 
     <label>Podaj nam swój nick z @ na Discord</label>
-    <input type="text" name="discord" required>
+    <input type="text" id="discord" required>
 
     <label>Wiadomość</label>
-    <textarea name="message" rows="5" required></textarea>
-
-    <label>Twoja opinia (będzie widoczna publicznie)</label>
-    <textarea name="public_opinion" rows="4" placeholder="Zostaw opinię o Lwowskiej Republice..."></textarea>
+    <textarea id="wiadomosc" rows="5" required></textarea>
 
     <button type="submit">Wyślij</button>
   </form>
+
+  <script>
+    document.getElementById('kontakt-form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const nick = document.getElementById('nick').value;
+      const discord = document.getElementById('discord').value;
+      const wiadomosc = document.getElementById('wiadomosc').value;
+      
+      const kontakty = JSON.parse(localStorage.getItem('formularzeKontaktowe') || '[]');
+      kontakty.push({ nick, discord, wiadomosc, odpowiedz: null });
+      localStorage.setItem('formularzeKontaktowe', JSON.stringify(kontakty));
+      alert("Formularz został wysłany!");
+      document.getElementById('kontakt-form').reset();
+    });
+  </script>
 </body>
 </html>
