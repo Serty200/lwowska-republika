@@ -2,110 +2,58 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Opinie</title>
+  <title>Opinie – Lwowska Republika</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-    body {
-      font-family: 'Inter', sans-serif;
-      background-color: #f2f2f2;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #004080;
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    main {
-      padding: 20px;
-    }
-    section {
-      background-color: white;
-      margin: 20px auto;
-      padding: 20px;
-      border-radius: 10px;
-      max-width: 800px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-    input, textarea, button {
-      font-family: 'Inter', sans-serif;
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 15px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #004080;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #002050;
-    }
-    .opinia {
-      background-color: #e6e6e6;
-      border-left: 4px solid #004080;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .nick {
-      font-weight: bold;
-      color: #004080;
-    }
+    body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+    form { display: flex; flex-direction: column; width: 300px; margin-bottom: 30px; }
+    label { margin-top: 10px; }
+    .opinia { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #f9f9f9; }
   </style>
-  <script>
-    function dodajOpinie(event) {
-      event.preventDefault();
-
-      const nick = document.getElementById('nick').value.trim();
-      const opinia = document.getElementById('opinia').value.trim();
-
-      if (!nick || !opinia) return;
-
-      const container = document.getElementById('opinie-lista');
-      const div = document.createElement('div');
-      div.className = 'opinia';
-      div.innerHTML = '<span class="nick">' + nick + ':</span> ' + opinia;
-
-      container.prepend(div);
-
-      document.getElementById('nick').value = '';
-      document.getElementById('opinia').value = '';
-    }
-  </script>
 </head>
 <body>
+  <h1>Dodaj opinię</h1>
+  <form id="opiniaForm">
+    <label>Nick:
+      <input type="text" id="opiniaNick" required>
+    </label>
+    <label>Treść opinii:
+      <textarea id="opiniaTekst" required></textarea>
+    </label>
+    <button type="submit">Wyślij</button>
+  </form>
 
-<header>
-  <h1>Opinie obywateli</h1>
-</header>
+  <h2>Zatwierdzone opinie</h2>
+  <div id="opinie"></div>
 
-<main>
-  <section>
-    <h2>Wyślij swoją opinię</h2>
-    <form onsubmit="dodajOpinie(event)">
-      <label for="nick">Twój nick:</label>
-      <input type="text" id="nick" name="nick" required>
+  <script>
+    const opinie = JSON.parse(localStorage.getItem('opinie')) || [];
 
-      <label for="opinia">Twoja opinia:</label>
-      <textarea id="opinia" name="opinia" rows="5" required></textarea>
+    function pokazOpinie() {
+      const container = document.getElementById('opinie');
+      container.innerHTML = '';
+      opinie.filter(o => o.zatwierdzona).forEach(o => {
+        const div = document.createElement('div');
+        div.className = 'opinia';
+        div.innerHTML = `<strong>${o.nick}</strong><p>${o.opinia}</p>`;
+        container.appendChild(div);
+      });
+    }
 
-      <button type="submit">Wyślij</button>
-    </form>
-  </section>
+    document.getElementById('opiniaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const nowa = {
+        nick: document.getElementById('opiniaNick').value,
+        opinia: document.getElementById('opiniaTekst').value,
+        zatwierdzona: false
+      };
+      opinie.push(nowa);
+      localStorage.setItem('opinie', JSON.stringify(opinie));
+      alert('Dziękujemy za opinię! Zostanie zatwierdzona przez administrację.');
+      this.reset();
+    });
 
-  <section>
-    <h2>Publiczne opinie</h2>
-    <div id="opinie-lista"></div>
-  </section>
-</main>
-
+    pokazOpinie();
+  </script>
 </body>
 </html>
+
