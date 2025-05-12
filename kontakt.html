@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8">
-  <title>Kontakt – Lwowska Republika</title>
+  <title>Opinie – Lwowska Republika</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -10,26 +10,38 @@
       background-color: #f2f2f2;
       padding: 20px;
     }
-    form {
+    .opinia {
       background-color: white;
-      padding: 20px;
+      padding: 15px;
+      margin-bottom: 15px;
       border-radius: 10px;
-      max-width: 600px;
-      margin: auto;
+      max-width: 800px;
+      margin-left: auto;
+      margin-right: auto;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-    input, textarea {
+    .form-section {
+      max-width: 800px;
+      margin: 20px auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    label, input, textarea {
+      display: block;
       width: 100%;
+      margin-bottom: 10px;
+    }
+    input, textarea {
       padding: 10px;
-      margin-top: 10px;
-      margin-bottom: 20px;
       border: 1px solid #ccc;
       border-radius: 5px;
     }
     button {
-      background-color: #0066cc;
-      color: white;
       padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
       border: none;
       border-radius: 5px;
       cursor: pointer;
@@ -37,33 +49,53 @@
   </style>
 </head>
 <body>
-  <h1>Skontaktuj się z nami</h1>
-  <form id="kontakt-form">
-    <label>Imię i Nazwisko roleplay bądź swój zwykły nick</label>
-    <input type="text" id="nick" required>
+  <h1>Opinie obywateli</h1>
 
-    <label>Podaj nam swój nick z @ na Discord</label>
-    <input type="text" id="discord" required>
+  <div class="form-section">
+    <h2>Dodaj opinię</h2>
+    <form id="opiniaForm">
+      <label for="nick">Twój nick (z Discorda lub RP):</label>
+      <input type="text" id="nick" name="nick" required>
 
-    <label>Wiadomość</label>
-    <textarea id="wiadomosc" rows="5" required></textarea>
+      <label for="opinia">Twoja opinia:</label>
+      <textarea id="opinia" name="opinia" rows="4" required></textarea>
 
-    <button type="submit">Wyślij</button>
-  </form>
+      <button type="submit">Wyślij</button>
+    </form>
+  </div>
+
+  <div id="opinieContainer"></div>
 
   <script>
-    document.getElementById('kontakt-form').addEventListener('submit', function(e) {
+    const opinieContainer = document.getElementById('opinieContainer');
+    const opinie = JSON.parse(localStorage.getItem('opinie')) || [];
+
+    function wyswietlOpinie() {
+      opinieContainer.innerHTML = '';
+      if (opinie.length === 0) {
+        opinieContainer.innerHTML = '<p>Brak opinii.</p>';
+        return;
+      }
+      opinie.forEach(op => {
+        const div = document.createElement('div');
+        div.className = 'opinia';
+        div.innerHTML = `<p><strong>${op.nick}:</strong> ${op.tresc}</p>`;
+        opinieContainer.appendChild(div);
+      });
+    }
+
+    document.getElementById('opiniaForm').addEventListener('submit', function(e) {
       e.preventDefault();
       const nick = document.getElementById('nick').value;
-      const discord = document.getElementById('discord').value;
-      const wiadomosc = document.getElementById('wiadomosc').value;
-      
-      const kontakty = JSON.parse(localStorage.getItem('formularzeKontaktowe') || '[]');
-      kontakty.push({ nick, discord, wiadomosc, odpowiedz: null });
-      localStorage.setItem('formularzeKontaktowe', JSON.stringify(kontakty));
-      alert("Formularz został wysłany!");
-      document.getElementById('kontakt-form').reset();
+      const tresc = document.getElementById('opinia').value;
+      opinie.push({ nick, tresc });
+      localStorage.setItem('opinie', JSON.stringify(opinie));
+      wyswietlOpinie();
+      this.reset();
     });
+
+    wyswietlOpinie();
   </script>
 </body>
 </html>
+
