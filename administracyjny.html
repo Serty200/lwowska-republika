@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel Administracyjny</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f9f9f9; }
+    .opinia { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; background: #fff; }
+    .zatwierdzona { background-color: #d4edda; }
+    .niezatwierdzona { background-color: #f8d7da; }
+    button { margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Panel Administracyjny - Opinie</h1>
+
+  <div id="panel"></div>
+
+  <script>
+    const haslo = prompt("Podaj hasło dostępu do panelu administracyjnego:");
+    if (haslo !== "LR2050ZawszeRazem") {
+      document.body.innerHTML = "<h2>Niepoprawne hasło. Dostęp zabroniony.</h2>";
+    } else {
+      const panel = document.getElementById("panel");
+      const opinie = JSON.parse(localStorage.getItem("opinie")) || [];
+
+      function zapiszOpinie() {
+        localStorage.setItem("opinie", JSON.stringify(opinie));
+        pokazOpinie();
+      }
+
+      function pokazOpinie() {
+        panel.innerHTML = "";
+        if (opinie.length === 0) {
+          panel.innerHTML = "<p>Brak opinii.</p>";
+          return;
+        }
+
+        opinie.forEach((opinia, index) => {
+          const div = document.createElement("div");
+          div.className = `opinia ${opinia.zatwierdzona ? 'zatwierdzona' : 'niezatwierdzona'}`;
+          div.innerHTML = `
+            <strong>Nick:</strong> ${opinia.nick}<br>
+            <strong>Opinia:</strong> ${opinia.opinia}<br>
+            <strong>Status:</strong> ${opinia.zatwierdzona ? '✅ Zatwierdzona' : '❌ Niezatwierdzona'}<br>
+            ${!opinia.zatwierdzona ? `<button onclick="zatwierdz(${index})">Zatwierdź</button>` : ''}
+          `;
+          panel.appendChild(div);
+        });
+      }
+
+      function zatwierdz(index) {
+        opinie[index].zatwierdzona = true;
+        zapiszOpinie();
+      }
+
+      pokazOpinie();
+    }
+  </script>
+</body>
+</html>
