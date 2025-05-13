@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  
+  ...
   <style>
     /* OBECNY STYL — NIE USUWAJ GO */
 
@@ -33,7 +33,7 @@
 
     #theme-toggle {
       position: fixed;
-      top: 20px;
+      bottom: 20px;
       right: 20px;
       background-color: #007bff;
       color: white;
@@ -62,6 +62,7 @@
       const toggle = document.createElement('button');
       toggle.id = 'theme-toggle';
       toggle.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
+      toggle.setAttribute('aria-label', 'Przełącz motyw');
       toggle.addEventListener('click', () => {
         const isDarkNow = document.body.classList.contains('dark-mode');
         setDarkMode(!isDarkNow);
@@ -71,6 +72,7 @@
     });
   </script>
 </head>
+
 
  
   <meta charset="UTF-8">
