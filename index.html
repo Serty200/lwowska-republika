@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  
+<head>
   ...
   <style>
     /* OBECNY STYL — NIE USUWAJ GO */
@@ -34,15 +34,16 @@
 
     #theme-toggle {
       position: fixed;
-      top: 10px;
-      right: 10px;
+      top: 20px;
+      right: 20px;
       background-color: #007bff;
       color: white;
       border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
+      padding: 8px 16px;
+      border-radius: 8px;
       cursor: pointer;
       z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
   </style>
   <script>
@@ -61,16 +62,17 @@
 
       const toggle = document.createElement('button');
       toggle.id = 'theme-toggle';
-      toggle.innerText = isDark ? 'Tryb jasny' : 'Tryb ciemny';
+      toggle.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
       toggle.addEventListener('click', () => {
         const isDarkNow = document.body.classList.contains('dark-mode');
         setDarkMode(!isDarkNow);
-        toggle.innerText = !isDarkNow ? 'Tryb jasny' : 'Tryb ciemny';
+        toggle.textContent = !isDarkNow ? 'Tryb jasny' : 'Tryb ciemny';
       });
       document.body.appendChild(toggle);
     });
   </script>
 </head>
+
  
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
