@@ -140,6 +140,29 @@
   <p>&copy; 2025 Lwowska Republika. Wszelkie prawa zastrzeżone.</p>
 </footer>
 
+  <script>
+  const toggleTheme = () => {
+    const currentTheme = document.documentElement.dataset.theme;
+    if (currentTheme === 'dark') {
+      document.documentElement.dataset.theme = 'light';
+      localStorage.setItem('theme', 'light');
+    } else {
+      document.documentElement.dataset.theme = 'dark';
+      localStorage.setItem('theme', 'dark');
+    }
+  }
+
+  // Ustaw temat z localStorage lub systemowego
+  const userPref = localStorage.getItem('theme');
+  if (userPref) {
+    document.documentElement.dataset.theme = userPref;
+  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+</script>
+
+<button onclick="toggleTheme()" style="position: fixed; bottom: 20px; right: 20px;">Zmień motyw</button>
+
 </body>
 </html>
 
