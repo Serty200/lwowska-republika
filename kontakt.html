@@ -74,7 +74,6 @@
     });
   </script>
 </head>
-
   <meta charset="UTF-8">
   <title>Opinie – Lwowska Republika</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
@@ -120,6 +119,12 @@
       border-radius: 5px;
       cursor: pointer;
     }
+    .odpowiedz {
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #e7f1ff;
+      border-left: 4px solid #007bff;
+    }
   </style>
 </head>
 <body>
@@ -154,6 +159,12 @@
         const div = document.createElement('div');
         div.className = 'opinia';
         div.innerHTML = `<p><strong>${op.nick}:</strong> ${op.tresc}</p>`;
+        if (op.odpowiedz) {
+          const odp = document.createElement('div');
+          odp.className = 'odpowiedz';
+          odp.textContent = `Odpowiedź administratora: ${op.odpowiedz}`;
+          div.appendChild(odp);
+        }
         opinieContainer.appendChild(div);
       });
     }
