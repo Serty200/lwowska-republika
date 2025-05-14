@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="pl">
 <style>
+<style>
   body {
     font-family: 'Inter', sans-serif;
   }
 
-  /* Jasny motyw domyślnie */
+  /* Jasny motyw (domyślny) */
   body, section, nav, header, footer, .embed {
     background-color: #ffffff;
     color: #111111;
   }
 
   .embed {
+    background-color: #ffffff;
+    color: #111111;
     padding: 10px;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
@@ -26,40 +29,62 @@
     color: #007bff;
   }
 
-  /* Styl dla trybu ciemnego - ciepłe, ciemne kolory */
-  body.dark-mode, 
-  .dark-mode section, 
-  .dark-mode nav, 
-  .dark-mode header, 
-  .dark-mode footer, 
-  .dark-mode .embed {
+  /* Tryb ciemny – ciemne kolory, zimne odcienie */
+  body.dark-mode,
+  .dark-mode section,
+  .dark-mode nav,
+  .dark-mode header,
+  .dark-mode footer {
     background-color: #121212;
-    color: #e0e0e0;
+    color: #d0d0d0;
   }
 
   .dark-mode .embed {
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.05);
+    background-color: #1e1e2f;
+    color: #e0e0ff;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
   }
 
-  .dark-mode .embed h1, 
-  .dark-mode .embed h2, 
-  .dark-mode .embed h3, 
-  .dark-mode .embed h4, 
-  .dark-mode .embed h5, 
+  .dark-mode .embed h1,
+  .dark-mode .embed h2,
+  .dark-mode .embed h3,
+  .dark-mode .embed h4,
+  .dark-mode .embed h5,
   .dark-mode .embed h6,
-  .dark-mode section h1, 
-  .dark-mode section h2, 
-  .dark-mode section h3, 
-  .dark-mode section h4, 
-  .dark-mode section h5, 
+  .dark-mode section h1,
+  .dark-mode section h2,
+  .dark-mode section h3,
+  .dark-mode section h4,
+  .dark-mode section h5,
   .dark-mode section h6 {
-    color: #ffffff;
+    color: #b0cfff;
   }
 
   .dark-mode a {
-    color: #f4a261;
+    color: #80bfff;
+  }
+
+  /* Przycisk do zmiany trybu */
+  .toggle-theme {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    background-color: #007bff;
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 1000;
+  }
+
+  .dark-mode .toggle-theme {
+    background-color: #80bfff;
+    color: #121212;
   }
 </style>
+
+<button class="toggle-theme" onclick="document.body.classList.toggle('dark-mode')">Zmień tryb</button>
 
   <meta charset="UTF-8">
   <title>Panel Administracyjny</title>
