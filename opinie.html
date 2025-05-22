@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="pl">
-<head>
-  <style>
+<style>
   body {
     font-family: 'Inter', sans-serif;
   }
@@ -84,9 +83,16 @@
   }
 </style>
 
+<script>
+  // Automatyczne dostosowanie do preferencji systemowych
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if (prefersDark) {
+    document.body.classList.add('dark-mode');
+  }
+</script>
+
 <button class="toggle-theme" onclick="document.body.classList.toggle('dark-mode')">Zmień tryb</button>
 
-</head>
   <meta charset="UTF-8">
   <title>Opinie – Lwowska Republika</title>
   <style>
