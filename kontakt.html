@@ -1,90 +1,109 @@
 <!DOCTYPE html>
 <html lang="pl">
-<style>
-  body {
-    font-family: 'Inter', sans-serif;
-  }
-
-  /* Jasny motyw (domyślny) */
-  body, section, nav, header, footer, .embed {
-    background-color: #ffffff;
-    color: #111111;
-  }
-
-  .embed {
-    background-color: #ffffff;
-    color: #111111;
-    padding: 10px;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-  }
-
-  .embed h1, .embed h2, .embed h3, .embed h4, .embed h5, .embed h6,
-  section h1, section h2, section h3, section h4, section h5, section h6 {
-    color: #111111;
-  }
-
-  a {
-    color: #007bff;
-  }
-
-  /* Tryb ciemny – ciemne kolory, zimne odcienie */
-  body.dark-mode,
-  .dark-mode section,
-  .dark-mode nav,
-  .dark-mode header,
-  .dark-mode footer {
-    background-color: #121212;
-    color: #d0d0d0;
-  }
-
-  .dark-mode .embed {
-    background-color: #1e1e2f;
-    color: #e0e0ff;
-    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-  }
-
-  .dark-mode .embed h1,
-  .dark-mode .embed h2,
-  .dark-mode .embed h3,
-  .dark-mode .embed h4,
-  .dark-mode .embed h5,
-  .dark-mode .embed h6,
-  .dark-mode section h1,
-  .dark-mode section h2,
-  .dark-mode section h3,
-  .dark-mode section h4,
-  .dark-mode section h5,
-  .dark-mode section h6 {
-    color: #b0cfff;
-  }
-
-  .dark-mode a {
-    color: #80bfff;
-  }
-
-  /* Przycisk do zmiany trybu */
-  .toggle-theme {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    background-color: #007bff;
-    color: white;
-    padding: 0.5rem 1rem;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    z-index: 1000;
-  }
-
-  .dark-mode .toggle-theme {
-    background-color: #80bfff;
-    color: #121212;
-  }
-</style>
-
-<button class="toggle-theme" onclick="document.body.classList.toggle('dark-mode')">Zmień tryb</button>
 <head>
+  
+  <style>
+    /* OBECNY STYL — NIE USUWAJ GO */
+
+    /* Ciemny motyw */
+    body.dark-mode {
+      background-color: #121212;
+      color: #f0f0f0;
+    }
+
+    header.dark-mode,
+    nav.dark-mode,
+    footer.dark-mode,
+    section.dark-mode {
+      background-color: #1e1e1e;
+      color: #f0f0f0;
+    }
+
+    nav.dark-mode a {
+      color: #f0f0f0;
+    }
+
+    input.dark-mode,
+    textarea.dark-mode,
+    button.dark-mode {
+      background-color: #2a2a2a;
+      color: #f0f0f0;
+      border-color: #444;
+    }
+
+    #theme-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      z-index: 9999;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      width: auto;
+    }
+
+    /* Styl jasny dla czytelności */
+    body {
+      background-color: #ffffff;
+      color: #111111;
+      font-family: 'Inter', sans-serif;
+    }
+
+    section, nav, header, footer {
+      background-color: #ffffff;
+      color: #111111;
+    }
+
+    .embed {
+      background-color: #ffffff;
+      color: #111111;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .embed h1, .embed h2, .embed h3, .embed h4, .embed h5, .embed h6,
+    section h1, section h2, section h3, section h4, section h5, section h6 {
+      color: #111111;
+    }
+
+    a {
+      color: #007bff;
+    }
+  </style>
+  <script>
+    function setDarkMode(enabled) {
+      document.body.classList.toggle('dark-mode', enabled);
+      document.querySelectorAll('header, nav, footer, section, input, textarea, button')
+        .forEach(el => el.classList.toggle('dark-mode', enabled));
+      localStorage.setItem('darkMode', enabled);
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const savedMode = localStorage.getItem('darkMode');
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isDark = savedMode === 'true' || (savedMode === null && prefersDark);
+      setDarkMode(isDark);
+
+      const toggle = document.createElement('button');
+      toggle.id = 'theme-toggle';
+      toggle.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
+      toggle.setAttribute('aria-label', 'Przełącz motyw');
+      toggle.addEventListener('click', () => {
+        const isDarkNow = document.body.classList.contains('dark-mode');
+        setDarkMode(!isDarkNow);
+        toggle.textContent = !isDarkNow ? 'Tryb jasny' : 'Tryb ciemny';
+      });
+      document.body.appendChild(toggle);
+    });
+  </script>
+</head>
+
   <meta charset="UTF-8">
   <title>Kontakt – Lwowska Republika</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
