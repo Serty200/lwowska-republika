@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <title>Wybory - Lwowska Republika</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h1, h2 { color: #004080; }
+    .question { margin-bottom: 20px; }
+    .results { margin-top: 30px; }
+    button { padding: 10px 20px; margin-top: 10px; cursor: pointer; }
+    .admin-panel { margin-top: 50px; background: #eef; padding: 20px; border-radius: 8px; }
+    input, textarea, select { width: 100%; padding: 8px; margin-top: 5px; }
+    .success-message { color: green; font-weight: bold; margin-top: 10px; }
+    .archive { margin-top: 50px; padding: 20px; background: #fff4e6; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🗳 Wybory Lwowskiej Republiki</h1>
+    <div id="voteSection"></div>
+
+    <div class="results">
+      <h2>Wyniki</h2>
+      <div id="resultsSection">Brak głosów.</div>
+    </div>
+
+    <div class="archive">
+      <h2>📁 Archiwum Wyborów</h2>
+      <div id="archiveSection">Brak zakończonych głosowań.</div>
+    </div>
+
+    <div class="admin-panel" id="adminPanel" style="display: none;">
+      <h2>Panel Administracyjny - Wybory</h2>
+      <label>Tytuł wyborów:</label>
+      <input type="text" id="electionTitle">
+      <label>Dodaj pytanie:</label>
+      <textarea id="newQuestion"></textarea>
+      <label>Typ pytania:</label>
+      <select id="questionType">
+        <option value="yesno">Tak/Nie</option>
+        <option value="options">Wybór spośród opcji</option>
+        <option value="open">Własna odpowiedź</option>
+      </select>
+      <label id="optionsLabel" style="display:none;">Opcje (oddzielone przecinkami):</label>
+      <input type="text" id="questionOptions" style="display:none;">
+      <button onclick="addQuestion()">Dodaj</button>
+      <div id="addSuccess" class="success-message" style="display:none;">✅ Pytanie zostało pomyślnie dodane.</div>
+
+      <h3>Zarządzaj pytaniami</h3>
+      <button onclick="endAllVotes()">Zakończ wszystkie głosowania</button>
+      <div id="adminQuestions"></div>
+    </div>
+  </div>
+
+  <script>
+    const isDev = new URLSearchParams(window.location.search).get("dev") === "true";
+    const hasloAdmin = isDev ? "LR2050ZawszeRazem" : prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
+    if (hasloAdmin === "LR2050ZawszeRazem") {
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
+    const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
+    const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
+
+    function saveAll() {
+      localStorage.setItem("electionQuestions", JSON.stringify(questions));
+      localStorage.setItem("electionVotes", JSON.stringify(votes));
+      localStorage.setItem("electionArchive", JSON.stringify(archive));
+    }
+
+    document.getElementById('questionType').addEventListener('change', function() {
+      const show = this.value === 'options';
+      document.getElementById('questionOptions').style.display = show ? 'block' : 'none';
+      document.getElementById('optionsLabel').style.display = show ? 'block' : 'none';
+    });
+
+    function addQuestion() {
+      const text = document.getElementById("newQuestion").value.trim();
+      const type = document.getElementById("questionType").value;
+      const options = document.getElementById("questionOptions").value.split(',').map(o => o.trim()).filter(o => o);
+      if (!text) return;
+
+      const question = { text, type, options };
+      questions.push(question);
+      votes[text] = {};
+
+      if (type === "yesno") votes[text] = { tak: 0, nie: 0 };
+      else if (type === "options") options.forEach(opt => votes[text][opt] = 0);
+
+      saveAll();
+      render();
+      document.getElementById("newQuestion").value = "";
+      document.getElementById("questionOptions").value = "";
+
+      const msg = document.getElementById("addSuccess");
+      msg.style.display = "block";
+      setTimeout(() => { msg.style.display = "none"; }, 3000);
+    }
+
+    function render() {
+      const voteSection = document.getElementById("voteSection");
+      const adminQuestions = document.getElementById("adminQuestions");
+      const resultsSection = document.getElementById("resultsSection");
+      const archiveSection = document.getElementById("archiveSection");
+
+      voteSection.innerHTML = "";
+      adminQuestions.innerHTML = "";
+      resultsSection.innerHTML = "";
+      archiveSection.innerHTML = archive.map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
+
+      questions.forEach((q, i) => {
+        const div = document.createElement("div");
+        div.className = "question";
+        div.innerHTML = `<strong>${q.text}</strong><br>`;
+
+        if (q.type === 'yesno') {
+          div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
+        } else if (q.type === 'options') {
+          q.options.forEach(opt => {
+            div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
+          });
+        } else {
+          div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+        }
+        voteSection.appendChild(div);
+
+        const adminDiv = document.createElement("div");
+        const res = votes[q.text] || {};
+        adminDiv.innerHTML = `
+          <strong>Pytanie:</strong><br>
+          <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
+          <br><label>Typ:</label> ${q.type}<br>
+        `;
+
+        Object.keys(res).forEach(option => {
+          adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
+        });
+
+        adminDiv.innerHTML += `
+          <button onclick="removeQuestion(${i})">Usuń</button>
+          <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>
+        `;
+        adminQuestions.appendChild(adminDiv);
+
+        resultsSection.innerHTML += `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+      });
+    }
+
+    function vote(qText, answer) {
+      if (!votes[qText]) votes[qText] = {};
+      if (!votes[qText][answer]) votes[qText][answer] = 0;
+      votes[qText][answer]++;
+      saveAll();
+      render();
+    }
+
+    function removeQuestion(index) {
+      const q = questions[index];
+      questions.splice(index, 1);
+      delete votes[q.text];
+      saveAll();
+      render();
+    }
+
+    function endVote(qText) {
+      const title = document.getElementById("electionTitle").value || "Bez tytułu";
+      const content = `<p><strong>${qText}</strong><br>${Object.entries(votes[qText] || {}).map(([opt, val]) => `${opt}: ${val}`).join(" | ")}</p>`;
+      archive.push({ title, content });
+      questions.splice(questions.findIndex(q => q.text === qText), 1);
+      delete votes[qText];
+      saveAll();
+      render();
+    }
+
+    function endAllVotes() {
+      const title = prompt("Podaj nazwę dla zakończonego pakietu głosowań:") || "Bez tytułu";
+      let content = "";
+      questions.forEach(q => {
+        const res = votes[q.text] || {};
+        content += `<p><strong>${q.text}</strong><br>${Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ")}</p>`;
+      });
+      archive.push({ title, content });
+      questions.length = 0;
+      for (let key in votes) delete votes[key];
+      saveAll();
+      render();
+    }
+
+    function updateVotes(qText, option, value) {
+      if (!votes[qText]) votes[qText] = {};
+      votes[qText][option] = parseInt(value) || 0;
+      saveAll();
+      render();
+    }
+
+    function updateQuestion(index, newText) {
+      const oldText = questions[index].text;
+      if (!newText || oldText === newText) return;
+      questions[index].text = newText;
+      votes[newText] = votes[oldText];
+      delete votes[oldText];
+      saveAll();
+      render();
+    }
+
+    render();
+  </script>
+</body>
+</html>
