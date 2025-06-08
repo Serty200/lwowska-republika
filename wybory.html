@@ -14,6 +14,7 @@
     input, textarea, select { width: 100%; padding: 8px; margin-top: 5px; }
     .success-message { color: green; font-weight: bold; margin-top: 10px; }
     .archive { margin-top: 50px; padding: 20px; background: #fff4e6; border-radius: 8px; }
+    .filter-section { margin-top: 20px; }
   </style>
 </head>
 <body>
@@ -28,6 +29,10 @@
 
     <div class="archive">
       <h2>📁 Archiwum Wyborów</h2>
+      <div class="filter-section">
+        <label>Filtruj po tytule:</label>
+        <input type="text" id="filterInput" oninput="render()">
+      </div>
       <div id="archiveSection">Brak zakończonych głosowań.</div>
     </div>
 
@@ -42,6 +47,7 @@
         <option value="yesno">Tak/Nie</option>
         <option value="options">Wybór spośród opcji</option>
         <option value="open">Własna odpowiedź</option>
+        <option value="singlevote">Jeden głos użytkownika</option>
       </select>
       <label id="optionsLabel" style="display:none;">Opcje (oddzielone przecinkami):</label>
       <input type="text" id="questionOptions" style="display:none;">
@@ -55,24 +61,33 @@
   </div>
 
   <script>
-    const isDev = new URLSearchParams(window.location.search).get("dev") === "true";
-    const hasloAdmin = isDev ? "LR2050ZawszeRazem" : prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
-    if (hasloAdmin === "LR2050ZawszeRazem") {
+    const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
+    if (hasloAdmin === "LR2050 Zawsze Razem") {
       document.getElementById('adminPanel').style.display = 'block';
     }
 
     const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
     const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
     const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
+    const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
+    const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
+
+    async function getIP() {
+      const res = await fetch("https://api.ipify.org?format=json");
+      const data = await res.json();
+      return data.ip;
+    }
 
     function saveAll() {
       localStorage.setItem("electionQuestions", JSON.stringify(questions));
       localStorage.setItem("electionVotes", JSON.stringify(votes));
       localStorage.setItem("electionArchive", JSON.stringify(archive));
+      localStorage.setItem("votedQuestions", JSON.stringify(voted));
+      localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
     }
 
     document.getElementById('questionType').addEventListener('change', function() {
-      const show = this.value === 'options';
+      const show = this.value === 'options' || this.value === 'singlevote';
       document.getElementById('questionOptions').style.display = show ? 'block' : 'none';
       document.getElementById('optionsLabel').style.display = show ? 'block' : 'none';
     });
@@ -86,9 +101,10 @@
       const question = { text, type, options };
       questions.push(question);
       votes[text] = {};
+      ipVotes[text] = [];
 
       if (type === "yesno") votes[text] = { tak: 0, nie: 0 };
-      else if (type === "options") options.forEach(opt => votes[text][opt] = 0);
+      else if (type === "options" || type === "singlevote") options.forEach(opt => votes[text][opt] = 0);
 
       saveAll();
       render();
@@ -105,11 +121,14 @@
       const adminQuestions = document.getElementById("adminQuestions");
       const resultsSection = document.getElementById("resultsSection");
       const archiveSection = document.getElementById("archiveSection");
+      const filter = document.getElementById("filterInput").value.toLowerCase();
 
       voteSection.innerHTML = "";
       adminQuestions.innerHTML = "";
       resultsSection.innerHTML = "";
-      archiveSection.innerHTML = archive.map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
+      archiveSection.innerHTML = archive
+        .filter(entry => entry.title.toLowerCase().includes(filter))
+        .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
 
       questions.forEach((q, i) => {
         const div = document.createElement("div");
@@ -118,7 +137,7 @@
 
         if (q.type === 'yesno') {
           div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
-        } else if (q.type === 'options') {
+        } else if (q.type === 'options' || q.type === 'singlevote') {
           q.options.forEach(opt => {
             div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
           });
@@ -149,10 +168,26 @@
       });
     }
 
-    function vote(qText, answer) {
+    async function vote(qText, answer) {
+      const ip = await getIP();
+      const key = `${qText}_voted`;
+
       if (!votes[qText]) votes[qText] = {};
-      if (!votes[qText][answer]) votes[qText][answer] = 0;
-      votes[qText][answer]++;
+      if (!ipVotes[qText]) ipVotes[qText] = [];
+
+      const question = questions.find(q => q.text === qText);
+      const alreadyVoted = ipVotes[qText].includes(ip);
+
+      if ((question?.type === 'singlevote' || question?.type === 'yesno' || question?.type === 'open') && alreadyVoted) {
+        return alert("Już zagłosowałeś na to pytanie z tego IP.");
+      }
+
+      votes[qText][answer] = (votes[qText][answer] || 0) + 1;
+
+      if (question?.type === 'singlevote' || question?.type === 'yesno' || question?.type === 'open') {
+        ipVotes[qText].push(ip);
+      }
+
       saveAll();
       render();
     }
@@ -161,6 +196,8 @@
       const q = questions[index];
       questions.splice(index, 1);
       delete votes[q.text];
+      delete voted[q.text];
+      delete ipVotes[q.text];
       saveAll();
       render();
     }
@@ -171,12 +208,15 @@
       archive.push({ title, content });
       questions.splice(questions.findIndex(q => q.text === qText), 1);
       delete votes[qText];
+      delete voted[qText];
+      delete ipVotes[qText];
       saveAll();
       render();
     }
 
     function endAllVotes() {
       const title = prompt("Podaj nazwę dla zakończonego pakietu głosowań:") || "Bez tytułu";
+      if (!questions.length) return alert("Brak aktywnych głosowań do zakończenia.");
       let content = "";
       questions.forEach(q => {
         const res = votes[q.text] || {};
@@ -185,6 +225,8 @@
       archive.push({ title, content });
       questions.length = 0;
       for (let key in votes) delete votes[key];
+      for (let key in voted) delete voted[key];
+      for (let key in ipVotes) delete ipVotes[key];
       saveAll();
       render();
     }
@@ -201,7 +243,11 @@
       if (!newText || oldText === newText) return;
       questions[index].text = newText;
       votes[newText] = votes[oldText];
+      voted[newText] = voted[oldText];
+      ipVotes[newText] = ipVotes[oldText];
       delete votes[oldText];
+      delete voted[oldText];
+      delete ipVotes[oldText];
       saveAll();
       render();
     }
