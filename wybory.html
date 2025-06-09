@@ -22,7 +22,7 @@
     <h1>🗳 Wybory Lwowskiej Republiki</h1>
     <div id="voteSection"></div>
 
-    <div class="results">
+    <div class="results" id="publicResults">
       <h2>Wyniki</h2>
       <div id="resultsSection">Brak głosów.</div>
     </div>
@@ -57,12 +57,18 @@
       <h3>Zarządzaj pytaniami</h3>
       <button onclick="endAllVotes()">Zakończ wszystkie głosowania</button>
       <div id="adminQuestions"></div>
+
+      <div class="results">
+        <h2>Wyniki</h2>
+        <div id="adminResultsSection">Brak głosów.</div>
+      </div>
     </div>
   </div>
 
   <script>
     const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
-    if (hasloAdmin === "LR2050 Zawsze Razem") {
+    const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
+    if (isAdmin) {
       document.getElementById('adminPanel').style.display = 'block';
     }
 
@@ -71,12 +77,7 @@
     const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
     const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
     const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
-
-    async function getIP() {
-      const res = await fetch("https://api.ipify.org?format=json");
-      const data = await res.json();
-      return data.ip;
-    }
+    const endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
 
     function saveAll() {
       localStorage.setItem("electionQuestions", JSON.stringify(questions));
@@ -84,48 +85,22 @@
       localStorage.setItem("electionArchive", JSON.stringify(archive));
       localStorage.setItem("votedQuestions", JSON.stringify(voted));
       localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
-    }
-
-    document.getElementById('questionType').addEventListener('change', function() {
-      const show = this.value === 'options' || this.value === 'singlevote';
-      document.getElementById('questionOptions').style.display = show ? 'block' : 'none';
-      document.getElementById('optionsLabel').style.display = show ? 'block' : 'none';
-    });
-
-    function addQuestion() {
-      const text = document.getElementById("newQuestion").value.trim();
-      const type = document.getElementById("questionType").value;
-      const options = document.getElementById("questionOptions").value.split(',').map(o => o.trim()).filter(o => o);
-      if (!text) return;
-
-      const question = { text, type, options };
-      questions.push(question);
-      votes[text] = {};
-      ipVotes[text] = [];
-
-      if (type === "yesno") votes[text] = { tak: 0, nie: 0 };
-      else if (type === "options" || type === "singlevote") options.forEach(opt => votes[text][opt] = 0);
-
-      saveAll();
-      render();
-      document.getElementById("newQuestion").value = "";
-      document.getElementById("questionOptions").value = "";
-
-      const msg = document.getElementById("addSuccess");
-      msg.style.display = "block";
-      setTimeout(() => { msg.style.display = "none"; }, 3000);
+      localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
     }
 
     function render() {
       const voteSection = document.getElementById("voteSection");
       const adminQuestions = document.getElementById("adminQuestions");
       const resultsSection = document.getElementById("resultsSection");
+      const adminResultsSection = document.getElementById("adminResultsSection");
       const archiveSection = document.getElementById("archiveSection");
       const filter = document.getElementById("filterInput").value.toLowerCase();
 
       voteSection.innerHTML = "";
       adminQuestions.innerHTML = "";
       resultsSection.innerHTML = "";
+      adminResultsSection.innerHTML = "";
+
       archiveSection.innerHTML = archive
         .filter(entry => entry.title.toLowerCase().includes(filter))
         .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
@@ -164,95 +139,20 @@
         `;
         adminQuestions.appendChild(adminDiv);
 
-        resultsSection.innerHTML += `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+        const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+
+        if (isAdmin) {
+          adminResultsSection.innerHTML += resultContent;
+        } else if (endedVotes.includes(q.text)) {
+          resultsSection.innerHTML += resultContent;
+        }
       });
-    }
 
-    async function vote(qText, answer) {
-      const ip = await getIP();
-      const key = `${qText}_voted`;
-
-      if (!votes[qText]) votes[qText] = {};
-      if (!ipVotes[qText]) ipVotes[qText] = [];
-
-      const question = questions.find(q => q.text === qText);
-      const alreadyVoted = ipVotes[qText].includes(ip);
-
-      if ((question?.type === 'singlevote' || question?.type === 'yesno' || question?.type === 'open') && alreadyVoted) {
-        return alert("Już zagłosowałeś na to pytanie z tego IP.");
-      }
-
-      votes[qText][answer] = (votes[qText][answer] || 0) + 1;
-
-      if (question?.type === 'singlevote' || question?.type === 'yesno' || question?.type === 'open') {
-        ipVotes[qText].push(ip);
-      }
-
-      saveAll();
-      render();
-    }
-
-    function removeQuestion(index) {
-      const q = questions[index];
-      questions.splice(index, 1);
-      delete votes[q.text];
-      delete voted[q.text];
-      delete ipVotes[q.text];
-      saveAll();
-      render();
-    }
-
-    function endVote(qText) {
-      const title = document.getElementById("electionTitle").value || "Bez tytułu";
-      const content = `<p><strong>${qText}</strong><br>${Object.entries(votes[qText] || {}).map(([opt, val]) => `${opt}: ${val}`).join(" | ")}</p>`;
-      archive.push({ title, content });
-      questions.splice(questions.findIndex(q => q.text === qText), 1);
-      delete votes[qText];
-      delete voted[qText];
-      delete ipVotes[qText];
-      saveAll();
-      render();
-    }
-
-    function endAllVotes() {
-      const title = prompt("Podaj nazwę dla zakończonego pakietu głosowań:") || "Bez tytułu";
-      if (!questions.length) return alert("Brak aktywnych głosowań do zakończenia.");
-      let content = "";
-      questions.forEach(q => {
-        const res = votes[q.text] || {};
-        content += `<p><strong>${q.text}</strong><br>${Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ")}</p>`;
-      });
-      archive.push({ title, content });
-      questions.length = 0;
-      for (let key in votes) delete votes[key];
-      for (let key in voted) delete voted[key];
-      for (let key in ipVotes) delete ipVotes[key];
-      saveAll();
-      render();
-    }
-
-    function updateVotes(qText, option, value) {
-      if (!votes[qText]) votes[qText] = {};
-      votes[qText][option] = parseInt(value) || 0;
-      saveAll();
-      render();
-    }
-
-    function updateQuestion(index, newText) {
-      const oldText = questions[index].text;
-      if (!newText || oldText === newText) return;
-      questions[index].text = newText;
-      votes[newText] = votes[oldText];
-      voted[newText] = voted[oldText];
-      ipVotes[newText] = ipVotes[oldText];
-      delete votes[oldText];
-      delete voted[oldText];
-      delete ipVotes[oldText];
-      saveAll();
-      render();
+      document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
     }
 
     render();
   </script>
 </body>
 </html>
+
