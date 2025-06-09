@@ -111,6 +111,28 @@
       render();
     }
 
+    function endVote(questionText) {
+      if (!endedVotes.includes(questionText)) {
+        endedVotes.push(questionText);
+        const res = votes[questionText] || {};
+        const resultContent = `<p><strong>${questionText}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+        archive.push({ title: questionText, content: resultContent });
+        saveAll();
+        render();
+      }
+    }
+
+    function removeQuestion(index) {
+      const q = questions[index];
+      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
+        questions.splice(index, 1);
+        delete votes[q.text];
+        delete ipVotes[q.text];
+        saveAll();
+        render();
+      }
+    }
+
     function render() {
       const voteSection = document.getElementById("voteSection");
       const adminQuestions = document.getElementById("adminQuestions");
