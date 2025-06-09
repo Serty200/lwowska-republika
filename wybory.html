@@ -88,6 +88,25 @@
       localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
     }
 
+    function addQuestion() {
+      const text = document.getElementById("newQuestion").value.trim();
+      const type = document.getElementById("questionType").value;
+      const optionsRaw = document.getElementById("questionOptions").value;
+      if (!text) return;
+
+      let question = { text, type };
+      if (type === "options" || type === "singlevote") {
+        question.options = optionsRaw.split(',').map(opt => opt.trim()).filter(Boolean);
+      }
+      questions.push(question);
+      saveAll();
+      document.getElementById("newQuestion").value = "";
+      document.getElementById("questionOptions").value = "";
+      document.getElementById("addSuccess").style.display = "block";
+      setTimeout(() => document.getElementById("addSuccess").style.display = "none", 2000);
+      render();
+    }
+
     function render() {
       const voteSection = document.getElementById("voteSection");
       const adminQuestions = document.getElementById("adminQuestions");
@@ -106,46 +125,45 @@
         .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
 
       questions.forEach((q, i) => {
+        const res = votes[q.text] || {};
+        const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+
+        if (isAdmin || endedVotes.includes(q.text)) {
+          if (isAdmin) adminResultsSection.innerHTML += resultContent;
+          else resultsSection.innerHTML += resultContent;
+        }
+
         const div = document.createElement("div");
         div.className = "question";
         div.innerHTML = `<strong>${q.text}</strong><br>`;
 
-        if (q.type === 'yesno') {
-          div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
-        } else if (q.type === 'options' || q.type === 'singlevote') {
-          q.options.forEach(opt => {
-            div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
-          });
-        } else {
-          div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+        if (!endedVotes.includes(q.text)) {
+          if (q.type === 'yesno') {
+            div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
+          } else if (q.type === 'options' || q.type === 'singlevote') {
+            q.options.forEach(opt => {
+              div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
+            });
+          } else {
+            div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+          }
+          voteSection.appendChild(div);
         }
-        voteSection.appendChild(div);
 
         const adminDiv = document.createElement("div");
-        const res = votes[q.text] || {};
         adminDiv.innerHTML = `
           <strong>Pytanie:</strong><br>
           <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
           <br><label>Typ:</label> ${q.type}<br>
         `;
-
         Object.keys(res).forEach(option => {
           adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
         });
-
         adminDiv.innerHTML += `
           <button onclick="removeQuestion(${i})">Usuń</button>
           <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>
         `;
         adminQuestions.appendChild(adminDiv);
-
-        const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
-
-        if (isAdmin) {
-          adminResultsSection.innerHTML += resultContent;
-        } else if (endedVotes.includes(q.text)) {
-          resultsSection.innerHTML += resultContent;
-        }
       });
 
       document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
