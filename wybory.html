@@ -66,6 +66,15 @@
   </div>
 
   <script>
+    let userIP = null;
+
+    fetch('https://api.ipify.org?format=json')
+      .then(response => response.json())
+      .then(data => {
+        userIP = data.ip;
+        render();
+      });
+
     const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
     const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
     if (isAdmin) {
@@ -86,6 +95,20 @@
       localStorage.setItem("votedQuestions", JSON.stringify(voted));
       localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
       localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
+    }
+
+    function vote(question, answer) {
+      if (!userIP) return alert("Nie udało się pobrać adresu IP. Spróbuj ponownie.");
+
+      ipVotes[question] = ipVotes[question] || [];
+      if (ipVotes[question].includes(userIP)) return alert("Już oddałeś głos w tym pytaniu (IP). Nie możesz głosować ponownie.");
+
+      votes[question] = votes[question] || {};
+      votes[question][answer] = (votes[question][answer] || 0) + 1;
+
+      ipVotes[question].push(userIP);
+      saveAll();
+      render();
     }
 
     function render() {
@@ -110,16 +133,18 @@
         div.className = "question";
         div.innerHTML = `<strong>${q.text}</strong><br>`;
 
-        if (q.type === 'yesno') {
-          div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
-        } else if (q.type === 'options' || q.type === 'singlevote') {
-          q.options.forEach(opt => {
-            div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
-          });
-        } else {
-          div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+        if (!endedVotes.includes(q.text)) {
+          if (q.type === 'yesno') {
+            div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
+          } else if (q.type === 'options' || q.type === 'singlevote') {
+            q.options.forEach(opt => {
+              div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
+            });
+          } else {
+            div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+          }
+          voteSection.appendChild(div);
         }
-        voteSection.appendChild(div);
 
         const adminDiv = document.createElement("div");
         const res = votes[q.text] || {};
@@ -150,8 +175,6 @@
 
       document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
     }
-
-    render();
   </script>
 </body>
 </html>
