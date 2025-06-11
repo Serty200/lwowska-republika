@@ -66,7 +66,138 @@
   </div>
 
   <script>
-    // Skrypt działa bez błędów – nie znaleziono błędów logicznych ani syntaktycznych
+    let userIP = null;
+
+    fetch('https://api.ipify.org?format=json')
+      .then(response => response.json())
+      .then(data => {
+        userIP = data.ip;
+        render();
+      });
+
+    const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
+    const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
+    if (isAdmin) {
+      document.getElementById('adminPanel').style.display = 'block';
+    }
+
+    const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
+    const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
+    const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
+    const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
+    const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
+    const endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
+
+    function saveAll() {
+      localStorage.setItem("electionQuestions", JSON.stringify(questions));
+      localStorage.setItem("electionVotes", JSON.stringify(votes));
+      localStorage.setItem("electionArchive", JSON.stringify(archive));
+      localStorage.setItem("votedQuestions", JSON.stringify(voted));
+      localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
+      localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
+    }
+
+    function vote(question, answer) {
+      if (!userIP) return alert("Nie udało się pobrać adresu IP. Spróbuj ponownie.");
+
+      ipVotes[question] = ipVotes[question] || [];
+      if (ipVotes[question].includes(userIP)) return alert("Już oddałeś głos w tym pytaniu (IP). Nie możesz głosować ponownie.");
+
+      votes[question] = votes[question] || {};
+      votes[question][answer] = (votes[question][answer] || 0) + 1;
+
+      ipVotes[question].push(userIP);
+      saveAll();
+      render();
+    }
+
+    function endVote(questionText) {
+      if (!endedVotes.includes(questionText)) {
+        endedVotes.push(questionText);
+        const res = votes[questionText] || {};
+        const resultContent = `<p><strong>${questionText}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+        archive.push({ title: questionText, content: resultContent });
+        saveAll();
+        render();
+      }
+    }
+
+    function removeQuestion(index) {
+      const q = questions[index];
+      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
+        questions.splice(index, 1);
+        delete votes[q.text];
+        delete ipVotes[q.text];
+        saveAll();
+        render();
+      }
+    }
+
+    function render() {
+      const voteSection = document.getElementById("voteSection");
+      const adminQuestions = document.getElementById("adminQuestions");
+      const resultsSection = document.getElementById("resultsSection");
+      const adminResultsSection = document.getElementById("adminResultsSection");
+      const archiveSection = document.getElementById("archiveSection");
+      const filter = document.getElementById("filterInput").value.toLowerCase();
+
+      voteSection.innerHTML = "";
+      adminQuestions.innerHTML = "";
+      resultsSection.innerHTML = "";
+      adminResultsSection.innerHTML = "";
+
+      archiveSection.innerHTML = archive
+        .filter(entry => entry.title.toLowerCase().includes(filter))
+        .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
+
+      questions.forEach((q, i) => {
+        const div = document.createElement("div");
+        div.className = "question";
+        div.innerHTML = `<strong>${q.text}</strong><br>`;
+
+        if (!endedVotes.includes(q.text)) {
+          if (q.type === 'yesno') {
+            div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
+          } else if (q.type === 'options' || q.type === 'singlevote') {
+            q.options.forEach(opt => {
+              div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
+            });
+          } else {
+            div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+          }
+          voteSection.appendChild(div);
+        }
+
+        const adminDiv = document.createElement("div");
+        const res = votes[q.text] || {};
+        adminDiv.innerHTML = `
+          <strong>Pytanie:</strong><br>
+          <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
+          <br><label>Typ:</label> ${q.type}<br>
+        `;
+
+        Object.keys(res).forEach(option => {
+          adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
+        });
+
+        adminDiv.innerHTML += `
+          <button onclick="removeQuestion(${i})">Usuń</button>
+          <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>
+        `;
+        adminQuestions.appendChild(adminDiv);
+
+        const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+
+        if (isAdmin) {
+          adminResultsSection.innerHTML += resultContent;
+        } else if (endedVotes.includes(q.text)) {
+          resultsSection.innerHTML += resultContent;
+        }
+      });
+
+      document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
+    }
   </script>
 </body>
 </html>
+
