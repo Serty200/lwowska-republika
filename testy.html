@@ -67,7 +67,13 @@
 
   <script>
     let userIP = null;
-    let isAdmin = false;
+
+    const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
+    const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
+    const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
+    const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
+    const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
+    const endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
 
     fetch('https://api.ipify.org?format=json')
       .then(response => response.json())
@@ -77,17 +83,10 @@
       });
 
     const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
-    if (hasloAdmin === "LR2050 Zawsze Razem") {
-      isAdmin = true;
+    const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
+    if (isAdmin) {
       document.getElementById('adminPanel').style.display = 'block';
     }
-
-    const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
-    const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
-    const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
-    const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
-    const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
-    const endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
 
     function saveAll() {
       localStorage.setItem("electionQuestions", JSON.stringify(questions));
@@ -96,49 +95,6 @@
       localStorage.setItem("votedQuestions", JSON.stringify(voted));
       localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
       localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
-    }
-
-    function addQuestion() {
-      const text = document.getElementById("newQuestion").value;
-      const type = document.getElementById("questionType").value;
-      const options = document.getElementById("questionOptions").value.split(',').map(o => o.trim());
-      if (!text) return;
-      const newQ = { text, type };
-      if (type === 'options' || type === 'singlevote') newQ.options = options;
-      questions.push(newQ);
-      document.getElementById("newQuestion").value = "";
-      document.getElementById("questionOptions").value = "";
-      document.getElementById("addSuccess").style.display = "block";
-      setTimeout(() => document.getElementById("addSuccess").style.display = "none", 2000);
-      saveAll();
-      render();
-    }
-
-    function removeQuestion(index) {
-      const q = questions[index];
-      if (!q) return;
-      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
-        questions.splice(index, 1);
-        delete votes[q.text];
-        delete ipVotes[q.text];
-        saveAll();
-        render();
-      }
-    }
-
-    function endVote(questionText) {
-      if (!endedVotes.includes(questionText)) {
-        endedVotes.push(questionText);
-        const res = votes[questionText] || {};
-        const resultContent = `<p><strong>${questionText}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
-        archive.push({ title: questionText, content: resultContent });
-        saveAll();
-        render();
-      }
-    }
-
-    function endAllVotes() {
-      questions.forEach(q => endVote(q.text));
     }
 
     function vote(question, answer) {
@@ -155,6 +111,41 @@
       render();
     }
 
+    function endVote(questionText) {
+      if (!endedVotes.includes(questionText)) {
+        endedVotes.push(questionText);
+        const res = votes[questionText] || {};
+        const resultContent = `<p><strong>${questionText}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
+        archive.push({ title: questionText, content: resultContent });
+        saveAll();
+        render();
+      }
+    }
+
+    function removeQuestion(index) {
+      const q = questions[index];
+      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
+        questions.splice(index, 1);
+        delete votes[q.text];
+        delete ipVotes[q.text];
+        saveAll();
+        render();
+      }
+    }
+
+    function updateQuestion(index, newText) {
+      questions[index].text = newText;
+      saveAll();
+      render();
+    }
+
+    function updateVotes(questionText, option, newValue) {
+      if (!votes[questionText]) votes[questionText] = {};
+      votes[questionText][option] = parseInt(newValue) || 0;
+      saveAll();
+      render();
+    }
+
     function render() {
       const voteSection = document.getElementById("voteSection");
       const adminQuestions = document.getElementById("adminQuestions");
@@ -167,14 +158,17 @@
       adminQuestions.innerHTML = "";
       resultsSection.innerHTML = "";
       adminResultsSection.innerHTML = "";
-      archiveSection.innerHTML = archive.filter(entry => entry.title.toLowerCase().includes(filter)).map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
+
+      archiveSection.innerHTML = archive
+        .filter(entry => entry.title.toLowerCase().includes(filter))
+        .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
 
       questions.forEach((q, i) => {
-        const res = votes[q.text] || {};
+        const div = document.createElement("div");
+        div.className = "question";
+        div.innerHTML = `<strong>${q.text}</strong><br>`;
+
         if (!endedVotes.includes(q.text)) {
-          const div = document.createElement("div");
-          div.className = "question";
-          div.innerHTML = `<strong>${q.text}</strong><br>`;
           if (q.type === 'yesno') {
             div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
           } else if (q.type === 'options' || q.type === 'singlevote') {
@@ -187,29 +181,66 @@
           voteSection.appendChild(div);
         }
 
-        const adminDiv = document.createElement("div");
-        adminDiv.innerHTML = `
-          <strong>Pytanie:</strong><br>
-          <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
-          <br><label>Typ:</label> ${q.type}<br>
-        `;
-        Object.keys(res).forEach(option => {
-          adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
-        });
-        adminDiv.innerHTML += `<button onclick="removeQuestion(${i})">Usuń</button> <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>`;
-        adminQuestions.appendChild(adminDiv);
+        if (isAdmin) {
+          const adminDiv = document.createElement("div");
+          const res = votes[q.text] || {};
+          adminDiv.innerHTML = `
+            <strong>Pytanie:</strong><br>
+            <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
+            <br><label>Typ:</label> ${q.type}<br>
+          `;
 
+          Object.keys(res).forEach(option => {
+            adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
+          });
+
+          adminDiv.innerHTML += `
+            <button onclick="removeQuestion(${i})">Usuń</button>
+            <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>
+          `;
+          adminQuestions.appendChild(adminDiv);
+        }
+
+        const res = votes[q.text] || {};
         const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
 
-        if (isAdmin) {
-          adminResultsSection.innerHTML += resultContent;
-        } else if (endedVotes.includes(q.text)) {
+        if (!isAdmin && endedVotes.includes(q.text)) {
           resultsSection.innerHTML += resultContent;
+        } else if (isAdmin) {
+          adminResultsSection.innerHTML += resultContent;
         }
       });
 
       document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
     }
+
+    function addQuestion() {
+      const text = document.getElementById("newQuestion").value.trim();
+      const type = document.getElementById("questionType").value;
+      const optionsInput = document.getElementById("questionOptions").value;
+      const options = (type === "options" || type === "singlevote") ? optionsInput.split(',').map(o => o.trim()) : [];
+
+      if (!text) return alert("Wpisz treść pytania.");
+
+      questions.push({ text, type, options });
+      document.getElementById("newQuestion").value = "";
+      document.getElementById("questionOptions").value = "";
+      saveAll();
+      render();
+      document.getElementById("addSuccess").style.display = "block";
+      setTimeout(() => document.getElementById("addSuccess").style.display = "none", 3000);
+    }
+
+    function endAllVotes() {
+      questions.forEach(q => endVote(q.text));
+    }
+
+    document.getElementById("questionType").addEventListener("change", function () {
+      const showOptions = this.value === "options" || this.value === "singlevote";
+      document.getElementById("optionsLabel").style.display = showOptions ? "block" : "none";
+      document.getElementById("questionOptions").style.display = showOptions ? "block" : "none";
+    });
   </script>
 </body>
 </html>
+
