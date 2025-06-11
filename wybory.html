@@ -43,7 +43,7 @@
       <label>Dodaj pytanie:</label>
       <textarea id="newQuestion"></textarea>
       <label>Typ pytania:</label>
-      <select id="questionType">
+      <select id="questionType" onchange="toggleOptionsInput()">
         <option value="yesno">Tak/Nie</option>
         <option value="options">Wybór spośród opcji</option>
         <option value="open">Własna odpowiedź</option>
@@ -81,12 +81,12 @@
       document.getElementById('adminPanel').style.display = 'block';
     }
 
-    const questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
-    const votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
-    const archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
-    const voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
-    const ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
-    const endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
+    let questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
+    let votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
+    let archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
+    let voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
+    let ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
+    let endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
 
     function saveAll() {
       localStorage.setItem("electionQuestions", JSON.stringify(questions));
@@ -97,18 +97,66 @@
       localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
     }
 
+    function toggleOptionsInput() {
+      const type = document.getElementById("questionType").value;
+      const show = (type === "options" || type === "singlevote");
+      document.getElementById("optionsLabel").style.display = show ? "block" : "none";
+      document.getElementById("questionOptions").style.display = show ? "block" : "none";
+    }
+
+    function addQuestion() {
+      const text = document.getElementById("newQuestion").value.trim();
+      const type = document.getElementById("questionType").value;
+      const optionsText = document.getElementById("questionOptions").value.trim();
+
+      if (!text) return alert("Wprowadź treść pytania.");
+
+      const question = { text, type };
+      if (type === "options" || type === "singlevote") {
+        if (!optionsText) return alert("Wprowadź opcje dla pytania.");
+        question.options = optionsText.split(",").map(o => o.trim()).filter(o => o);
+      }
+
+      questions.push(question);
+      saveAll();
+      document.getElementById("addSuccess").style.display = "block";
+      setTimeout(() => document.getElementById("addSuccess").style.display = "none", 3000);
+      render();
+    }
+
     function vote(question, answer) {
       if (!userIP) return alert("Nie udało się pobrać adresu IP. Spróbuj ponownie.");
-
       ipVotes[question] = ipVotes[question] || [];
-      if (ipVotes[question].includes(userIP)) return alert("Już oddałeś głos w tym pytaniu (IP). Nie możesz głosować ponownie.");
-
+      if (ipVotes[question].includes(userIP)) return alert("Już głosowałeś w tym pytaniu.");
       votes[question] = votes[question] || {};
       votes[question][answer] = (votes[question][answer] || 0) + 1;
-
       ipVotes[question].push(userIP);
       saveAll();
       render();
+    }
+
+    function updateQuestion(index, newText) {
+      questions[index].text = newText;
+      saveAll();
+      render();
+    }
+
+    function updateVotes(question, option, newVal) {
+      votes[question][option] = parseInt(newVal) || 0;
+      saveAll();
+      render();
+    }
+
+    function removeQuestion(index) {
+      const q = questions[index];
+      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
+        questions.splice(index, 1);
+        delete votes[q.text];
+        delete ipVotes[q.text];
+        endedVotes = endedVotes.filter(e => e !== q.text);
+        saveAll();
+        render();
+      }
     }
 
     function endVote(questionText) {
@@ -122,15 +170,8 @@
       }
     }
 
-    function removeQuestion(index) {
-      const q = questions[index];
-      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
-        questions.splice(index, 1);
-        delete votes[q.text];
-        delete ipVotes[q.text];
-        saveAll();
-        render();
-      }
+    function endAllVotes() {
+      questions.forEach(q => endVote(q.text));
     }
 
     function render() {
@@ -200,4 +241,3 @@
   </script>
 </body>
 </html>
-
