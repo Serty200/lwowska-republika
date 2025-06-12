@@ -85,9 +85,18 @@
       const optionsText = document.getElementById("questionOptions").value;
       const options = (type === 'options' || type === 'singlevote') ? optionsText.split(",").map(o => o.trim()) : [];
       const newQ = { text, type, options };
-      questionsRef.push(newQ);
-      document.getElementById("addSuccess").style.display = 'block';
-      setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
+
+      questionsRef.push(newQ, (error) => {
+        if (error) {
+          alert("❌ Błąd przy dodawaniu pytania!");
+        } else {
+          document.getElementById("addSuccess").style.display = 'block';
+          setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
+          document.getElementById("newQuestion").value = '';
+          document.getElementById("questionOptions").value = '';
+          render();
+        }
+      });
     }
 
     function render() {
@@ -126,7 +135,7 @@
             q.options.forEach(opt => {
               div.innerHTML += `<button onclick="vote('${id}', '${opt}')">${opt}</button> `;
             });
-          } else if (q.type === 'open') {
+          } else {
             div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${id}', this.value)">`;
           }
 
