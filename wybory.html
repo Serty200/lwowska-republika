@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <title>Wybory - Lwowska Republika</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
     .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -21,12 +23,10 @@
   <div class="container">
     <h1>🗳 Wybory Lwowskiej Republiki</h1>
     <div id="voteSection"></div>
-
     <div class="results" id="publicResults">
       <h2>Wyniki</h2>
       <div id="resultsSection">Brak głosów.</div>
     </div>
-
     <div class="archive">
       <h2>📁 Archiwum Wyborów</h2>
       <div class="filter-section">
@@ -35,7 +35,6 @@
       </div>
       <div id="archiveSection">Brak zakończonych głosowań.</div>
     </div>
-
     <div class="admin-panel" id="adminPanel" style="display: none;">
       <h2>Panel Administracyjny - Wybory</h2>
       <label>Tytuł wyborów:</label>
@@ -43,7 +42,7 @@
       <label>Dodaj pytanie:</label>
       <textarea id="newQuestion"></textarea>
       <label>Typ pytania:</label>
-      <select id="questionType" onchange="toggleOptionsInput()">
+      <select id="questionType">
         <option value="yesno">Tak/Nie</option>
         <option value="options">Wybór spośród opcji</option>
         <option value="open">Własna odpowiedź</option>
@@ -53,27 +52,23 @@
       <input type="text" id="questionOptions" style="display:none;">
       <button onclick="addQuestion()">Dodaj</button>
       <div id="addSuccess" class="success-message" style="display:none;">✅ Pytanie zostało pomyślnie dodane.</div>
-
       <h3>Zarządzaj pytaniami</h3>
-      <button onclick="endAllVotes()">Zakończ wszystkie głosowania</button>
       <div id="adminQuestions"></div>
-
-      <div class="results">
-        <h2>Wyniki</h2>
-        <div id="adminResultsSection">Brak głosów.</div>
-      </div>
     </div>
   </div>
-
   <script>
-    let userIP = null;
-
-    fetch('https://api.ipify.org?format=json')
-      .then(response => response.json())
-      .then(data => {
-        userIP = data.ip;
-        render();
-      });
+    const firebaseConfig = {
+      apiKey: "AIzaSyAqaPMXgvtDLl8Bu9PD5Z6g3h2uLXBkLO8",
+      authDomain: "lwowska-republika.firebaseapp.com",
+      projectId: "lwowska-republika",
+      storageBucket: "lwowska-republika.appspot.com",
+      messagingSenderId: "288907726616",
+      appId: "1:288907726616:web:82c8b4aa14c12e1ca7986d",
+      measurementId: "G-Y62QGV81F9",
+      databaseURL: "https://lwowska-republika-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
     const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
     const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
@@ -81,163 +76,108 @@
       document.getElementById('adminPanel').style.display = 'block';
     }
 
-    let questions = JSON.parse(localStorage.getItem("electionQuestions")) || [];
-    let votes = JSON.parse(localStorage.getItem("electionVotes")) || {};
-    let archive = JSON.parse(localStorage.getItem("electionArchive")) || [];
-    let voted = JSON.parse(localStorage.getItem("votedQuestions")) || {};
-    let ipVotes = JSON.parse(localStorage.getItem("ipVotes")) || {};
-    let endedVotes = JSON.parse(localStorage.getItem("endedVotes")) || [];
-
-    function saveAll() {
-      localStorage.setItem("electionQuestions", JSON.stringify(questions));
-      localStorage.setItem("electionVotes", JSON.stringify(votes));
-      localStorage.setItem("electionArchive", JSON.stringify(archive));
-      localStorage.setItem("votedQuestions", JSON.stringify(voted));
-      localStorage.setItem("ipVotes", JSON.stringify(ipVotes));
-      localStorage.setItem("endedVotes", JSON.stringify(endedVotes));
-    }
-
-    function toggleOptionsInput() {
-      const type = document.getElementById("questionType").value;
-      const show = (type === "options" || type === "singlevote");
-      document.getElementById("optionsLabel").style.display = show ? "block" : "none";
-      document.getElementById("questionOptions").style.display = show ? "block" : "none";
-    }
+    const questionsRef = db.ref("questions");
+    const votesRef = db.ref("votes");
 
     function addQuestion() {
-      const text = document.getElementById("newQuestion").value.trim();
+      const text = document.getElementById("newQuestion").value;
       const type = document.getElementById("questionType").value;
-      const optionsText = document.getElementById("questionOptions").value.trim();
-
-      if (!text) return alert("Wprowadź treść pytania.");
-
-      const question = { text, type };
-      if (type === "options" || type === "singlevote") {
-        if (!optionsText) return alert("Wprowadź opcje dla pytania.");
-        question.options = optionsText.split(",").map(o => o.trim()).filter(o => o);
-      }
-
-      questions.push(question);
-      saveAll();
-      document.getElementById("addSuccess").style.display = "block";
-      setTimeout(() => document.getElementById("addSuccess").style.display = "none", 3000);
-      render();
-    }
-
-    function vote(question, answer) {
-      if (!userIP) return alert("Nie udało się pobrać adresu IP. Spróbuj ponownie.");
-      ipVotes[question] = ipVotes[question] || [];
-      if (ipVotes[question].includes(userIP)) return alert("Już głosowałeś w tym pytaniu.");
-      votes[question] = votes[question] || {};
-      votes[question][answer] = (votes[question][answer] || 0) + 1;
-      ipVotes[question].push(userIP);
-      saveAll();
-      render();
-    }
-
-    function updateQuestion(index, newText) {
-      questions[index].text = newText;
-      saveAll();
-      render();
-    }
-
-    function updateVotes(question, option, newVal) {
-      votes[question][option] = parseInt(newVal) || 0;
-      saveAll();
-      render();
-    }
-
-    function removeQuestion(index) {
-      const q = questions[index];
-      if (confirm(`Na pewno chcesz usunąć pytanie: "${q.text}"?`)) {
-        questions.splice(index, 1);
-        delete votes[q.text];
-        delete ipVotes[q.text];
-        endedVotes = endedVotes.filter(e => e !== q.text);
-        saveAll();
-        render();
-      }
-    }
-
-    function endVote(questionText) {
-      if (!endedVotes.includes(questionText)) {
-        endedVotes.push(questionText);
-        const res = votes[questionText] || {};
-        const resultContent = `<p><strong>${questionText}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
-        archive.push({ title: questionText, content: resultContent });
-        saveAll();
-        render();
-      }
-    }
-
-    function endAllVotes() {
-      questions.forEach(q => endVote(q.text));
+      const optionsText = document.getElementById("questionOptions").value;
+      const options = (type === 'options' || type === 'singlevote') ? optionsText.split(",").map(o => o.trim()) : [];
+      const newQ = { text, type, options };
+      questionsRef.push(newQ);
+      document.getElementById("addSuccess").style.display = 'block';
+      setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
     }
 
     function render() {
       const voteSection = document.getElementById("voteSection");
       const adminQuestions = document.getElementById("adminQuestions");
       const resultsSection = document.getElementById("resultsSection");
-      const adminResultsSection = document.getElementById("adminResultsSection");
       const archiveSection = document.getElementById("archiveSection");
       const filter = document.getElementById("filterInput").value.toLowerCase();
 
-      voteSection.innerHTML = "";
-      adminQuestions.innerHTML = "";
-      resultsSection.innerHTML = "";
-      adminResultsSection.innerHTML = "";
+      questionsRef.on("value", snapshot => {
+        const data = snapshot.val();
+        voteSection.innerHTML = '';
+        adminQuestions.innerHTML = '';
+        resultsSection.innerHTML = '';
+        archiveSection.innerHTML = '';
 
-      archiveSection.innerHTML = archive
-        .filter(entry => entry.title.toLowerCase().includes(filter))
-        .map(entry => `<div><h3>${entry.title}</h3>${entry.content}</div>`).join("");
+        if (!data) return;
 
-      questions.forEach((q, i) => {
-        const div = document.createElement("div");
-        div.className = "question";
-        div.innerHTML = `<strong>${q.text}</strong><br>`;
+        Object.entries(data).forEach(([id, q]) => {
+          const archived = q.archivedAt !== undefined;
 
-        if (!endedVotes.includes(q.text)) {
+          if (archived) {
+            if (q.text.toLowerCase().includes(filter)) {
+              archiveSection.innerHTML += `<p><strong>${q.text}</strong> (zarchiwizowano: ${new Date(q.archivedAt).toLocaleString()})</p>`;
+            }
+            return;
+          }
+
+          const div = document.createElement("div");
+          div.className = "question";
+          div.innerHTML = `<strong>${q.text}</strong><br>`;
+
           if (q.type === 'yesno') {
-            div.innerHTML += `<button onclick="vote('${q.text}', 'tak')">✅ Tak</button> <button onclick="vote('${q.text}', 'nie')">❌ Nie</button>`;
+            div.innerHTML += `<button onclick="vote('${id}', 'tak')">✅ Tak</button> <button onclick="vote('${id}', 'nie')">❌ Nie</button>`;
           } else if (q.type === 'options' || q.type === 'singlevote') {
             q.options.forEach(opt => {
-              div.innerHTML += `<button onclick="vote('${q.text}', '${opt}')">${opt}</button> `;
+              div.innerHTML += `<button onclick="vote('${id}', '${opt}')">${opt}</button> `;
             });
           } else {
-            div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${q.text}', this.value)">`;
+            div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${id}', this.value)">`;
           }
+
           voteSection.appendChild(div);
-        }
 
-        const adminDiv = document.createElement("div");
-        const res = votes[q.text] || {};
-        adminDiv.innerHTML = `
-          <strong>Pytanie:</strong><br>
-          <textarea onchange="updateQuestion(${i}, this.value)">${q.text}</textarea>
-          <br><label>Typ:</label> ${q.type}<br>
-        `;
-
-        Object.keys(res).forEach(option => {
-          adminDiv.innerHTML += `<label>${option}: </label><input type="number" value="${res[option]}" onchange="updateVotes('${q.text}', '${option}', this.value)"> `;
+          if (isAdmin) {
+            const adminDiv = document.createElement("div");
+            adminDiv.innerHTML = `<textarea>${q.text}</textarea><br><button onclick="removeQuestion('${id}')">Usuń</button> <button onclick="archiveQuestion('${id}')">Archiwizuj</button>`;
+            adminQuestions.appendChild(adminDiv);
+          }
         });
-
-        adminDiv.innerHTML += `
-          <button onclick="removeQuestion(${i})">Usuń</button>
-          <button onclick="endVote('${q.text}')">Zakończ głosowanie</button><hr>
-        `;
-        adminQuestions.appendChild(adminDiv);
-
-        const resultContent = `<p><strong>${q.text}</strong><br>` + Object.entries(res).map(([opt, val]) => `${opt}: ${val}`).join(" | ") + `</p>`;
-
-        if (isAdmin) {
-          adminResultsSection.innerHTML += resultContent;
-        } else if (endedVotes.includes(q.text)) {
-          resultsSection.innerHTML += resultContent;
-        }
       });
 
-      document.getElementById("publicResults").style.display = (!isAdmin && resultsSection.innerHTML) ? "block" : "none";
+      votesRef.on("value", snap => {
+        const data = snap.val();
+        if (!data) return;
+        Object.entries(data).forEach(([qid, qvotes]) => {
+          const resLine = `<p><strong>${qid}</strong><br>${Object.entries(qvotes).map(([k, v]) => `${k}: ${v}`).join(" | ")}</p>`;
+          if (isAdmin) resultsSection.innerHTML += resLine;
+        });
+      });
     }
+
+    function vote(qid, answer) {
+      votesRef.child(qid).child(answer).get().then(snap => {
+        const val = snap.exists() ? snap.val() + 1 : 1;
+        votesRef.child(qid).child(answer).set(val);
+      });
+    }
+
+    function removeQuestion(qid) {
+      if (confirm("Na pewno chcesz usunąć to pytanie?")) {
+        questionsRef.child(qid).remove();
+        votesRef.child(qid).remove();
+      }
+    }
+
+    function archiveQuestion(qid) {
+      if (confirm("Zarchiwizować to pytanie?")) {
+        questionsRef.child(qid).update({ archivedAt: Date.now() });
+      }
+    }
+
+    document.getElementById("questionType").addEventListener("change", e => {
+      const type = e.target.value;
+      document.getElementById("optionsLabel").style.display = (type === 'options' || type === 'singlevote') ? 'block' : 'none';
+      document.getElementById("questionOptions").style.display = (type === 'options' || type === 'singlevote') ? 'block' : 'none';
+    });
+
+    render();
   </script>
 </body>
 </html>
+
