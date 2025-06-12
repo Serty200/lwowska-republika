@@ -126,7 +126,7 @@
             q.options.forEach(opt => {
               div.innerHTML += `<button onclick="vote('${id}', '${opt}')">${opt}</button> `;
             });
-          } else {
+          } else if (q.type === 'open') {
             div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${id}', this.value)">`;
           }
 
