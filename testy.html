@@ -80,14 +80,22 @@
     const votesRef = db.ref("votes");
 
     function addQuestion() {
-      const text = document.getElementById("newQuestion").value;
+      const text = document.getElementById("newQuestion").value.trim();
+      const title = document.getElementById("electionTitle").value.trim();
       const type = document.getElementById("questionType").value;
       const optionsText = document.getElementById("questionOptions").value;
-      const options = (type === 'options' || type === 'singlevote') ? optionsText.split(",").map(o => o.trim()) : [];
-      const newQ = { text, type, options };
-      questionsRef.push(newQ);
-      document.getElementById("addSuccess").style.display = 'block';
-      setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
+      const options = (type === 'options' || type === 'singlevote') ? optionsText.split(",").map(o => o.trim()).filter(o => o !== '') : [];
+
+      if (!text) return alert("Wprowadź treść pytania.");
+
+      const newQ = { text, title, type, options, archivedAt: null };
+      questionsRef.push(newQ).then(() => {
+        document.getElementById("addSuccess").style.display = 'block';
+        setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
+        document.getElementById("newQuestion").value = '';
+        document.getElementById("questionOptions").value = '';
+        render();
+      });
     }
 
     function render() {
@@ -97,6 +105,7 @@
       const archiveSection = document.getElementById("archiveSection");
       const filter = document.getElementById("filterInput").value.toLowerCase();
 
+      questionsRef.off();
       questionsRef.on("value", snapshot => {
         const data = snapshot.val();
         voteSection.innerHTML = '';
@@ -107,8 +116,7 @@
         if (!data) return;
 
         Object.entries(data).forEach(([id, q]) => {
-          const archived = q.archivedAt !== undefined;
-
+          const archived = q.archivedAt !== undefined && q.archivedAt !== null;
           if (archived) {
             if (q.text.toLowerCase().includes(filter)) {
               archiveSection.innerHTML += `<p><strong>${q.text}</strong> (zarchiwizowano: ${new Date(q.archivedAt).toLocaleString()})</p>`;
@@ -128,6 +136,8 @@
             });
           } else if (q.type === 'open') {
             div.innerHTML += `<input type="text" placeholder="Twoja odpowiedź" onblur="vote('${id}', this.value)">`;
+          } else {
+            div.innerHTML += `<em>Nieznany typ pytania</em>`;
           }
 
           voteSection.appendChild(div);
@@ -140,6 +150,7 @@
         });
       });
 
+      votesRef.off();
       votesRef.on("value", snap => {
         const data = snap.val();
         if (!data) return;
@@ -151,6 +162,7 @@
     }
 
     function vote(qid, answer) {
+      if (!answer || answer.trim() === '') return;
       votesRef.child(qid).child(answer).get().then(snap => {
         const val = snap.exists() ? snap.val() + 1 : 1;
         votesRef.child(qid).child(answer).set(val);
@@ -172,8 +184,9 @@
 
     document.getElementById("questionType").addEventListener("change", e => {
       const type = e.target.value;
-      document.getElementById("optionsLabel").style.display = (type === 'options' || type === 'singlevote') ? 'block' : 'none';
-      document.getElementById("questionOptions").style.display = (type === 'options' || type === 'singlevote') ? 'block' : 'none';
+      const show = (type === 'options' || type === 'singlevote');
+      document.getElementById("optionsLabel").style.display = show ? 'block' : 'none';
+      document.getElementById("questionOptions").style.display = show ? 'block' : 'none';
     });
 
     render();
