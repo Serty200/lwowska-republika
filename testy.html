@@ -18,6 +18,7 @@
     .archive { margin-top: 50px; padding: 20px; background: #fff4e6; border-radius: 8px; }
     .filter-section { margin-top: 20px; }
     .results-toggle { cursor: pointer; color: #004080; text-decoration: underline; margin-top: 10px; display: inline-block; }
+    .visibility-label { margin-top: 10px; display: block; font-weight: bold; }
   </style>
 </head>
 <body>
@@ -52,6 +53,7 @@
       </select>
       <label id="optionsLabel" style="display:none;">Opcje (oddzielone przecinkami):</label>
       <input type="text" id="questionOptions" style="display:none;">
+      <label class="visibility-label"><input type="checkbox" id="questionVisible" checked> Widoczne publicznie</label>
       <button onclick="addQuestion()">Dodaj</button>
       <div id="addSuccess" class="success-message" style="display:none;">✅ Pytanie zostało pomyślnie dodane.</div>
       <h3>Zarządzaj pytaniami</h3>
@@ -72,7 +74,8 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const hasloAdmin = prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasloAdmin = urlParams.get("haslo") || prompt("Podaj hasło administratora (pozostaw puste, jeśli nie jesteś administratorem):");
     const isAdmin = hasloAdmin === "LR2050 Zawsze Razem";
     if (isAdmin) {
       document.getElementById('adminPanel').style.display = 'block';
@@ -84,6 +87,7 @@
       const title = document.getElementById("electionTitle").value.trim();
       const text = document.getElementById("newQuestion").value.trim();
       const type = document.getElementById("questionType").value;
+      const visible = document.getElementById("questionVisible").checked;
       const optionsRaw = document.getElementById("questionOptions").value.trim();
       const options = (type === "options" || type === "singlevote") ? optionsRaw.split(",").map(o => o.trim()) : [];
       if (!title || !text) return;
@@ -92,6 +96,7 @@
         text,
         type,
         options,
+        visible,
         active: true,
         timestamp: Date.now()
       };
@@ -117,6 +122,7 @@
         const filter = document.getElementById("filterInput")?.value?.toLowerCase() || "";
         const entries = Object.entries(data);
         for (const [id, q] of entries.sort((a,b) => b[1].timestamp - a[1].timestamp)) {
+          if (!q.visible && !isAdmin) continue;
           const div = document.createElement("div");
           div.className = "question";
           div.innerHTML = `<h3>${q.title}</h3><p>${q.text}</p>`;
@@ -142,6 +148,12 @@
       const show = (type === 'options' || type === 'singlevote');
       document.getElementById("optionsLabel").style.display = show ? 'block' : 'none';
       document.getElementById("questionOptions").style.display = show ? 'block' : 'none';
+    });
+
+    document.getElementById("filterInput")?.addEventListener("keydown", e => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+      }
     });
 
     render();
