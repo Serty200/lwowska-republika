@@ -90,7 +90,7 @@
       const visible = document.getElementById("questionVisible").checked;
       const optionsRaw = document.getElementById("questionOptions").value.trim();
       const options = (type === "options" || type === "singlevote") ? optionsRaw.split(",").map(o => o.trim()) : [];
-      if (!title || !text) return;
+      if (!title || !text) return alert("Uzupełnij tytuł i treść pytania.");
       const questionData = {
         title,
         text,
@@ -107,6 +107,8 @@
           document.getElementById("newQuestion").value = "";
           document.getElementById("questionOptions").value = "";
           render();
+        } else {
+          alert("Błąd podczas dodawania pytania: " + error);
         }
       });
     }
@@ -126,13 +128,55 @@
           const div = document.createElement("div");
           div.className = "question";
           div.innerHTML = `<h3>${q.title}</h3><p>${q.text}</p>`;
+
           if (q.active) {
+            let inputHTML = "";
+            if (q.type === "yesno") {
+              inputHTML = `
+                <button onclick="submitVote('${id}', 'Tak')">Tak</button>
+                <button onclick="submitVote('${id}', 'Nie')">Nie</button>
+              `;
+            } else if (q.type === "options" || q.type === "singlevote") {
+              inputHTML = q.options.map(opt => `
+                <label><input type="radio" name="vote_${id}" value="${opt}"> ${opt}</label><br>
+              `).join('') + `<button onclick="submitRadioVote('${id}')">Głosuj</button>`;
+            } else if (q.type === "open") {
+              inputHTML = `
+                <input type="text" id="open_${id}" placeholder="Twoja odpowiedź">
+                <button onclick="submitOpenVote('${id}')">Głosuj</button>
+              `;
+            }
+            div.innerHTML += inputHTML;
             voteSection.appendChild(div);
-          } else if (q.title.toLowerCase().includes(filter)) {
-            archiveSection.appendChild(div);
+          } else {
+            if (q.title.toLowerCase().includes(filter)) {
+              archiveSection.appendChild(div);
+            }
           }
         }
       });
+    }
+
+    function submitVote(id, value) {
+      db.ref(`votes/${id}`).push({ answer: value });
+      alert("Dziękujemy za głos!");
+    }
+
+    function submitRadioVote(id) {
+      const radios = document.getElementsByName("vote_" + id);
+      for (const radio of radios) {
+        if (radio.checked) {
+          submitVote(id, radio.value);
+          return;
+        }
+      }
+      alert("Wybierz jedną z opcji.");
+    }
+
+    function submitOpenVote(id) {
+      const val = document.getElementById("open_" + id).value.trim();
+      if (!val) return alert("Podaj odpowiedź.");
+      submitVote(id, val);
     }
 
     function toggleResults() {
