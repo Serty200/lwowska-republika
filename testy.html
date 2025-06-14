@@ -86,14 +86,15 @@
       const optionsText = document.getElementById("questionOptions").value;
       const options = (type === 'options' || type === 'singlevote') ? optionsText.split(",").map(o => o.trim()).filter(o => o !== '') : [];
 
-      if (!text) return alert("Wprowadź treść pytania.");
+      if (!text || !title) return alert("Wprowadź tytuł i treść pytania.");
 
-      const newQ = { text, title, type, options, archivedAt: null };
+      const newQ = { text, title, type, options };
       questionsRef.push(newQ).then(() => {
         document.getElementById("addSuccess").style.display = 'block';
         setTimeout(() => document.getElementById("addSuccess").style.display = 'none', 2000);
         document.getElementById("newQuestion").value = '';
         document.getElementById("questionOptions").value = '';
+        document.getElementById("electionTitle").value = '';
         render();
       });
     }
@@ -116,7 +117,7 @@
         if (!data) return;
 
         Object.entries(data).forEach(([id, q]) => {
-          const archived = q.archivedAt !== undefined && q.archivedAt !== null;
+          const archived = !!q.archivedAt;
           if (archived) {
             if (q.title.toLowerCase().includes(filter)) {
               archiveSection.innerHTML += `<p><strong>${q.title}</strong>: ${q.text} (zarchiwizowano: ${new Date(q.archivedAt).toLocaleString()})</p>`;
@@ -155,7 +156,7 @@
         const data = snap.val();
         if (!data) return;
         Object.entries(data).forEach(([qid, qvotes]) => {
-          const resLine = `<p><strong>${qid}</strong><br>${Object.entries(qvotes).map(([k, v]) => `${k}: ${v}`).join(" | ")}</p>`;
+          const resLine = `<p><strong>${qid}</strong><br>${Object.entries(qvotes).filter(([k]) => k !== '_userVotes').map(([k, v]) => `${k}: ${v}`).join(" | ")}</p>`;
           if (isAdmin) resultsSection.innerHTML += resLine;
         });
       });
