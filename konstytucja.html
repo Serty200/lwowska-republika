@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konstytucja Lipcowa</title>
+  <style>
+    :root {
+      --bg-color: #f9f9f9;
+      --text-color: #222;
+      --header-bg: #004080;
+      --section-bg: #fff;
+      --btn-bg: #004080;
+      --btn-hover: #003366;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f0f0f0;
+      --header-bg: #1e1e1e;
+      --section-bg: #1c1c1c;
+      --btn-bg: #333;
+      --btn-hover: #555;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    header {
+      background-color: var(--header-bg);
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    #toggle-dark {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: none;
+      color: white;
+      border: 1px solid white;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    main {
+      padding: 40px 20px;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    section {
+      background-color: var(--section-bg);
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    footer {
+      text-align: center;
+      margin: 40px 0 10px;
+      color: #888;
+    }
+
+    a.button {
+      display: inline-block;
+      margin-top: 30px;
+      padding: 12px 20px;
+      background-color: var(--btn-bg);
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+    }
+
+    a.button:hover {
+      background-color: var(--btn-hover);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Konstytucja Lipcowa</h1>
+  <button id="toggle-dark">Tryb ciemny</button>
+</header>
+
+<main>
+  <section>
+    <h2>Artykuł 1</h2>
+    <p>Państwo Nazywa Się Republika Lwowska/Lwowska Republika. Republika Może Być Nazywana Lwów. Skrótem Lwowskiej Republiki Jest LR. Nazwy Republika Lwowska i Lwowska Republika Mogą Być Używane Na Przemian.</p>
+
+    <h2></h2>
+    <p>
