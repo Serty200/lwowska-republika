@@ -1,111 +1,71 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konstytucja Lipcowa</title>
   <style>
-    /* OBECNY STYL — NIE USUWAJ GO */
-
-    /* Ciemny motyw */
-    body.dark-mode {
-      background-color: #121212;
-      color: #f0f0f0;
+    :root {
+      --bg-color: #f9f9f9;
+      --text-color: #222;
     }
 
-    header.dark-mode,
-    nav.dark-mode,
-    footer.dark-mode,
-    section.dark-mode {
-      background-color: #1e1e1e;
-      color: #f0f0f0;
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f0f0f0;
     }
 
-    nav.dark-mode a {
-      color: #f0f0f0;
-    }
-
-    input.dark-mode,
-    textarea.dark-mode,
-    button.dark-mode {
-      background-color: #2a2a2a;
-      color: #f0f0f0;
-      border-color: #444;
-    }
-
-    #theme-toggle {
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      padding: 6px 12px;
-      font-size: 14px;
-      border-radius: 6px;
-      cursor: pointer;
-      z-index: 9999;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      width: auto;
-    }
-
-    /* Styl jasny dla czytelności */
     body {
-      background-color: #ffffff;
-      color: #111111;
-      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      transition: background-color 0.3s, color 0.3s;
     }
 
-    section, nav, header, footer {
-      background-color: #ffffff;
-      color: #111111;
+    header {
+      background-color: #004080;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
     }
 
-    .embed {
-      background-color: #ffffff;
-      color: #111111;
-      padding: 10px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    .dark-mode-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 12px;
+      background: #004080;
+      color: white;
+      border: 1px solid white;
+      border-radius: 5px;
+      font-size: 14px;
+      cursor: pointer;
     }
 
-    .embed h1, .embed h2, .embed h3, .embed h4, .embed h5, .embed h6,
-    section h1, section h2, section h3, section h4, section h5, section h6 {
-      color: #111111;
+    .dark-mode-toggle:hover {
+      background-color: #003366;
     }
 
-    a {
-      color: #007bff;
+    main {
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
     }
   </style>
-  <script>
-    function setDarkMode(enabled) {
-      document.body.classList.toggle('dark-mode', enabled);
-      document.querySelectorAll('header, nav, footer, section, input, textarea, button')
-        .forEach(el => el.classList.toggle('dark-mode', enabled));
-      localStorage.setItem('darkMode', enabled);
-    }
-
-    document.addEventListener("DOMContentLoaded", () => {
-      const savedMode = localStorage.getItem('darkMode');
-      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const isDark = savedMode === 'true' || (savedMode === null && prefersDark);
-      setDarkMode(isDark);
-
-      const toggle = document.createElement('button');
-      toggle.id = 'theme-toggle';
-      toggle.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
-      toggle.setAttribute('aria-label', 'Przełącz motyw');
-      toggle.addEventListener('click', () => {
-        const isDarkNow = document.body.classList.contains('dark-mode');
-        setDarkMode(!isDarkNow);
-        toggle.textContent = !isDarkNow ? 'Tryb jasny' : 'Tryb ciemny';
-      });
-      document.body.appendChild(toggle);
-    });
-  </script>
 </head>
+<body>
+
+<header>
+  <h1>Konstytucja Lipcowa</h1>
+  <button id="darkModeToggle" class="dark-mode-toggle">Tryb ciemny</button>
+</header>
+
 <main>
-  <section>
-        <h2>Preambuła</h2>
+  <!-- Tutaj wklej swoją konstytucję HTML (zamiast PDF/iframe) -->
+    <h2>Preambuła</h2>
     <p>My sekretarze Republiki Lwowskiej czyli też jej obywatele przekazujemy tą konstytucję całemu narodowi aby mu służyła.</p>
 
         <h2>Rozdział 1 Podstawy Ustroju</h2>
@@ -351,4 +311,24 @@
 
       <h2>Artykuł 74</h2> 
     <p>Konstytucja Wchodzi W Życie 14.07.2025 o Godzinie 14:45.</p>
-<main>
+</main>
+
+<script>
+  const toggleBtn = document.getElementById('darkModeToggle');
+  const body = document.body;
+
+  if (localStorage.getItem('theme') === 'dark') {
+    body.classList.add('dark');
+    toggleBtn.textContent = 'Tryb jasny';
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    body.classList.toggle('dark');
+    const isDark = body.classList.contains('dark');
+    toggleBtn.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  });
+</script>
+
+</body>
+</html>
