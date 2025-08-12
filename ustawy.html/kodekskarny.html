@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konstytucja Lipcowa</title>
+  <style>
+    :root {
+      --bg-color: #f9f9f9;
+      --text-color: #222;
+    }
+
+    body.dark {
+      --bg-color: #121212;
+      --text-color: #f0f0f0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    header {
+      background-color: #004080;
+      color: white;
+      padding: 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .dark-mode-toggle {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 4px 12px;
+      background: #004080;
+      color: white;
+      border: 1px solid white;
+      border-radius: 5px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .dark-mode-toggle:hover {
+      background-color: #003366;
+    }
+
+    main {
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Konstytucja Lipcowa</h1>
+  <button id="darkModeToggle" class="dark-mode-toggle">Tryb ciemny</button>
+</header>
+
+<main>
+  <!-- Tutaj wklej swoją konstytucję HTML (zamiast PDF/iframe) -->
+  <h2>Kodeks Karny Jest Drugim Najważniejszym Dokumentem W Państwie<h2></h2>
+<h2>Art.1</h2>
+<p>Jeżeli Sędziowie Nie Karają Zgodnie Z KK Mogą Zostać Pozbawieni Wolności do 100 Dni W Roleplayu, jeżeli nie ma na zbrodnie artykułu KK sędzia sam ustala karę</p>
+<h2>Art.2</h2>
+<p>Obywatel Który Nie Płaci Podatków Może Zostać Ukarany od 100k Złl do 500k złl</p>
+<h2>Art.3</h2>
+</p>Prokuratura Może Nadać Nakaz Aresztowania</p>
+<h2>Art.4</h2>
+<p>Prokuratura Przejmuje Obowiązki Policji</p>
+<h2>Art.5</h2>
+<p>Obywatel Który Kradnie Może zostać ukarany 1 Karą Warna Lub do 160k Złl</p>
+<h2>Art.6</h2>
+<p>Osoba Która Publicznie Niszczy Mienie Publiczne Może Zostać Ukarana 1 lub 2 warnami</p>
+<h2>Art.7</h2>
+<p>Poseł, Prezydent, Minister, Prezes Rady Ministrów, Wiceprezes Rady Ministrów oraz Wice Minister Mają Immunitet Więc Nie Mogą Być Ukarani, Lecz Mogą się Go Zrzeknąć Bądź Może Być Im Odebrany Przez Sejm</p>
+<h2>Art.8</h2>
+<p>Każdy Obywatel Który Organizuje Nielegalne Zgromadzenia Może Być Ukarany do 1mln Złl</p>
+<h2>Art.9</h2>
+<p>Każdy Kto Łamie Ciszę Wyborczą Może Być Ukarany Karą do 3 Tygodni Wyciszenia</p>
+<h2>Art.10</h2>
+<p>Każdy Kto Dopuszcza Się Korupcji Jest Karany Karą do 10mln ZŁL lub Karą Do 10 Warnów</p>
+<h2>Art.11</h2>
+<p>Każdy Kto Zamorduje Jest Karany do 6 Miesięcy Wyciszenia</p>
+<h2>Art.12</h2>
+<p>Każdy Kto Szpieguje Jest Karany do 20 Warnów i 10mln Złl</p>
+<h2>Art.13</h2>
+<p>Każdy Kto Dopuści Się Zdrady Stanu, Sabotażu Jest Karany Do 10mln Złl Grzywny</p>
+<h2>Art.14</h2>
+<p>Każdy Kto Należy Do Nielegalnej Organizacji Jest Karany do 5mln Złl Grzywny</p>
+<h2>Art.15</h2>
+<p>Każdy, Kto Zniesławia: Prezydenta, Członka Rady Ministrów, Posła. Jest Karany Minusem Poselskim/Karą Grzywny od 300 do 600k złl</p>
+
+<h2>Podpisy:</h2>
+<p>Mikołaj Małopolski</p>
+<p>(Prezydent, Minister Sprawiedliwości)</p>
+
+</main>
+
+<script>
+  const toggleBtn = document.getElementById('darkModeToggle');
+  const body = document.body;
+
+  if (localStorage.getItem('theme') === 'dark') {
+    body.classList.add('dark');
+    toggleBtn.textContent = 'Tryb jasny';
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    body.classList.toggle('dark');
+    const isDark = body.classList.contains('dark');
+    toggleBtn.textContent = isDark ? 'Tryb jasny' : 'Tryb ciemny';
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  });
+</script>
+
+</body>
+</html>
