@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Paint</title>
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+#toolbar {
+    background: #ddd;
+    padding: 8px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+button {
+    cursor: pointer;
+}
+canvas {
+    border-top: 2px solid #999;
+    display: block;
+}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+    <button onclick="tool='brush'">Pędzel</button>
+    <button onclick="tool='eraser'">Gumka</button>
+    <button onclick="tool='line'">Linia</button>
+    <button onclick="tool='rect'">Prostokąt</button>
+    <button onclick="tool='circle'">Koło</button>
+
+    <input type="color" id="color" value="#000000">
+    <input type="range" id="size" min="1" max="30" value="5">
+
+    <button onclick="undo()">Undo</button>
+    <button onclick="save()">Zapisz</button>
+</div>
+
+<canvas id="canvas" width="1200" height="700"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let drawing = false;
+let tool = "brush";
+let colorPicker = document.getElementById("color");
+let sizePicker = document.getElementById("size");
+
+let startX, startY;
+let history = [];
+
+function saveState() {
+    history.push(canvas.toDataURL());
+    if (history.length > 20) history.shift();
+}
+
+canvas.addEventListener("mousedown", e => {
+    saveState();
+    drawing = true;
+    startX = e.offsetX;
+    startY = e.offsetY;
+});
+
+canvas.addEventListener("mousemove", e => {
+    if (!drawing) return;
+
+    if (tool === "brush" || tool === "eraser") {
+        ctx.strokeStyle = tool === "eraser" ? "#ffffff" : colorPicker.value;
+        ctx.lineWidth = sizePicker.value;
+        ctx.lineCap = "round";
+
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(e.offsetX, e.offsetY);
+        ctx.stroke();
+
+        startX = e.offsetX;
+        startY = e.offsetY;
+    }
+});
+
+canvas.addEventListener("mouseup", e => {
+    if (!drawing) return;
+    drawing = false;
+
+    ctx.strokeStyle = colorPicker.value;
+    ctx.lineWidth = sizePicker.value;
+
+    let x = e.offsetX;
+    let y = e.offsetY;
+
+    if (tool === "line") {
+        ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+    }
+
+    if (tool === "rect") {
+        ctx.strokeRect(startX, startY, x - startX, y - startY);
+    }
+
+    if (tool === "circle") {
+        let r = Math.hypot(x - startX, y - startY);
+        ctx.beginPath();
+        ctx.arc(startX, startY, r, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+});
+
+function undo() {
+    if (!history.length) return;
+    let img = new Image();
+    img.src = history.pop();
+    img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0);
+    };
+}
+
+function save() {
+    const link = document.createElement("a");
+    link.download = "paint.png";
+    link.href = canvas.toDataURL();
+    link.click();
+}
+</script>
+
+</body>
+</html>
