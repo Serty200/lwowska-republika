@@ -2,70 +2,96 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Nasz Paint</title>
+<title>Nasz Paint – pełna wersja</title>
 <style>
-body{margin:0;font-family:Arial;background:#2b2b2b;color:#fff}
-#toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#1e1e1e}
-#toolbar>*{padding:4px}
-canvas{background:#fff;cursor:crosshair;display:block;margin:0 auto}
-input,select,button{background:#333;color:#fff;border:1px solid #555}
-button{cursor:pointer}
-#textInput{position:absolute;display:none;border:1px dashed #000;outline:none}
+body{margin:0;font-family:Arial;background:#2b2b2b;color:#fff;display:flex;height:100vh}
+#left,#right{background:#1e1e1e;padding:8px;overflow:auto}
+#left{width:220px}
+#right{width:260px}
+#center{flex:1;display:flex;flex-direction:column}
+#tabs button{width:100%;margin-bottom:4px}
+canvas{background:#fff;cursor:crosshair;flex:1}
+input,select,button{background:#333;color:#fff;border:1px solid #555;margin-bottom:4px;width:100%}
+.hidden{display:none}
+#textInput{position:absolute;display:none;border:1px dashed #000;outline:none;background:#fff;color:#000}
 </style>
 </head>
 <body>
 
-<div id="toolbar">
+<div id="left">
+<h3>Rysowanie</h3>
 <select id="tool">
-  <option value="brush">Pędzel</option>
-  <option value="eraser">Gumka</option>
-  <option value="line">Linia</option>
-  <option value="rect">Prostokąt</option>
-  <option value="circle">Koło</option>
-  <option value="text">Tekst</option>
+<option value="brush">Pędzel</option>
+<option value="pen">Długopis</option>
+<option value="pencil">Ołówek</option>
+<option value="marker">Cienkopis</option>
+<option value="eraser">Gumka</option>
+<option value="gradient">Gradient</option>
 </select>
-
+<input type="number" id="size" value="5" min="1" max="100">
 <input type="color" id="color" value="#000000">
 <input type="color" id="color2" value="#ff0000">
-<label><input type="checkbox" id="gradient"> Gradient</label>
-
-<input type="number" id="size" value="5" min="1" max="100">
-
-<select id="font">
-<option>Arial</option>
-<option>Verdana</option>
-<option>Times New Roman</option>
-<option>Courier New</option>
-<option>Comic Sans MS</option>
-<option>Impact</option>
-<option>Georgia</option>
-<option>Tahoma</option>
-<option>Trebuchet MS</option>
-<option>Lucida Console</option>
-<option>monospace</option>
-<option>serif</option>
-<option>sans-serif</option>
-</select>
-
-<input type="number" id="fontSize" value="24" min="8" max="200">
-<label><input type="checkbox" id="gradientText"> Gradient tekstu</label>
-
-<button onclick="undo()">Undo</button>
-<button onclick="redo()">Redo</button>
-<button onclick="saveImg()">Zapisz</button>
 </div>
 
-<canvas id="canvas" width="1200" height="700"></canvas>
+<div id="center">
+<div id="tabs">
+<button onclick="showTab('shapes')">Kształty</button>
+<button onclick="showTab('text')">Tekst</button>
+<button onclick="showTab('ai')">AI</button>
+</div>
+<canvas id="canvas" width="1400" height="800"></canvas>
+</div>
+
+<div id="right">
+<div id="shapes" class="tab">
+<h3>Kształty</h3>
+<select id="shape">
+<option value="line">Linia</option>
+<option value="rect">Prostokąt</option>
+<option value="circle">Koło</option>
+<option value="ellipse">Elipsa</option>
+<option value="triangle">Trójkąt</option>
+</select>
+</div>
+
+<div id="text" class="tab hidden">
+<h3>Tekst</h3>
+<select id="font">
+<option>Arial</option><option>Verdana</option><option>Times New Roman</option>
+<option>Courier New</option><option>Comic Sans MS</option><option>Impact</option>
+<option>Georgia</option><option>Tahoma</option><option>Trebuchet MS</option>
+<option>Lucida Console</option><option>monospace</option><option>serif</option>
+<option>sans-serif</option>
+</select>
+<input type="number" id="fontSize" value="24" min="8" max="200">
+<label><input type="checkbox" id="gradientText"> Tekst gradientowy</label>
+</div>
+
+<div id="ai" class="tab hidden">
+<h3>AI (lokalne)</h3>
+<button onclick="aiEnhance()">Ulepsz rysunek</button>
+<button onclick="aiColorize()">Auto kolor</button>
+<p style="font-size:12px">AI działa lokalnie (algorytmy), bez neta.</p>
+</div>
+
+<button onclick="undo()">Cofnij</button>
+<button onclick="redo()">Ponów</button>
+<button onclick="saveImg()">Zapisz PNG</button>
+<button onclick="pasteInfo()">Wklej (Ctrl+V)</button>
+<button onclick="pasteInfo()">Wklej (Ctrl+V)</button>
+<input type="file" accept="image/*" onchange="openImage(this)">
+</div>
+
 <input id="textInput">
 
 <script>
 const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
 const tool=document.getElementById('tool');
+const size=document.getElementById('size');
 const color=document.getElementById('color');
 const color2=document.getElementById('color2');
-const size=document.getElementById('size');
-const gradient=document.getElementById('gradient');
+const shape=document.getElementById('shape');
 const font=document.getElementById('font');
 const fontSize=document.getElementById('fontSize');
 const gradientText=document.getElementById('gradientText');
@@ -74,97 +100,98 @@ const textInput=document.getElementById('textInput');
 let drawing=false,startX=0,startY=0;
 let history=[],redoStack=[];
 
-function saveState(){history.push(canvas.toDataURL());redoStack=[];}
+function saveState(){history.push(canvas.toDataURL());redoStack=[]}
 saveState();
 
 canvas.onmousedown=e=>{
- drawing=true;
- startX=e.offsetX;startY=e.offsetY;
- if(tool.value==='text') startText(e.offsetX,e.offsetY);
-};
+ drawing=true;startX=e.offsetX;startY=e.offsetY;
+ if(tool.value==='text') startText(startX,startY)
+}
+canvas.onmouseup=e=>{drawing=false;saveState()}
+canvas.onmousemove=e=>{if(drawing) draw(e.offsetX,e.offsetY)}
 
-canvas.onmouseup=e=>{
- if(!drawing)return;
- drawing=false;
- if(['line','rect','circle'].includes(tool.value)) drawShape(e.offsetX,e.offsetY);
- saveState();
-};
-
-canvas.onmousemove=e=>{
- if(!drawing)return;
- if(tool.value==='brush'||tool.value==='eraser') drawBrush(e.offsetX,e.offsetY);
-};
-
-function drawBrush(x,y){
- ctx.lineWidth=size.value;
- ctx.lineCap='round';
- ctx.beginPath();
- ctx.moveTo(startX,startY);
- ctx.lineTo(x,y);
-
+function draw(x,y){
+ ctx.lineCap='round';ctx.lineWidth=size.value;
  if(tool.value==='eraser'){
   ctx.globalCompositeOperation='destination-out';
   ctx.strokeStyle='rgba(0,0,0,1)';
- }else{
+ }
+ else{
   ctx.globalCompositeOperation='source-over';
-  if(gradient.checked){
+  if(tool.value==='gradient'){
    let g=ctx.createLinearGradient(startX,startY,x,y);
    g.addColorStop(0,color.value);
    g.addColorStop(1,color2.value);
    ctx.strokeStyle=g;
-  }else ctx.strokeStyle=color.value;
+  } else ctx.strokeStyle=color.value;
  }
- ctx.stroke();
+ ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();
  startX=x;startY=y;
-}
-
-function drawShape(x,y){
- ctx.lineWidth=size.value;
- ctx.strokeStyle=color.value;
- ctx.beginPath();
- if(tool.value==='line'){
-  ctx.moveTo(startX,startY);ctx.lineTo(x,y);
- }
- if(tool.value==='rect') ctx.rect(startX,startY,x-startX,y-startY);
- if(tool.value==='circle'){
-  let r=Math.hypot(x-startX,y-startY);
-  ctx.arc(startX,startY,r,0,Math.PI*2);
- }
- ctx.stroke();
 }
 
 function startText(x,y){
  textInput.style.display='block';
- textInput.style.left=x+'px';
- textInput.style.top=y+'px';
- textInput.value='';
- textInput.focus();
+ textInput.style.left=x+'px';textInput.style.top=y+'px';
+ textInput.value='';textInput.focus();
  textInput.onkeydown=e=>{
   if(e.key==='Enter'){
    ctx.font=`${fontSize.value}px ${font.value}`;
-   let txt=textInput.value;
+   let t=textInput.value;
    if(gradientText.checked){
-    let w=ctx.measureText(txt).width;
+    let w=ctx.measureText(t).width;
     let g=ctx.createLinearGradient(x,y,x+w,y);
-    g.addColorStop(0,color.value);
-    g.addColorStop(1,color2.value);
+    g.addColorStop(0,color.value);g.addColorStop(1,color2.value);
     ctx.fillStyle=g;
-   }else ctx.fillStyle=color.value;
-   ctx.fillText(txt,x,y);
-   textInput.style.display='none';
-   saveState();
+   } else ctx.fillStyle=color.value;
+   ctx.fillText(t,x,y);
+   textInput.style.display='none';saveState();
   }
- };
+ }
 }
 
-function undo(){
- if(history.length>1){redoStack.push(history.pop());load(history.at(-1));}
-}
-function redo(){
- if(redoStack.length){let s=redoStack.pop();history.push(s);load(s);}
-}
+function undo(){if(history.length>1){redoStack.push(history.pop());load(history.at(-1))}}
+function redo(){if(redoStack.length){let s=redoStack.pop();history.push(s);load(s)}}
 function load(src){let i=new Image();i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0)};i.src=src}
-function saveImg(){let a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='paint.png';a.click()}
+function saveImg(){let a=document.createElement('a');a.href=canvas.toDataURL();a.download='paint.png';a.click()}
+// ===== Wklejanie obrazów =====
+document.addEventListener('paste',e=>{
+ const items=e.clipboardData?.items;
+ if(!items) return;
+ for(const it of items){
+  if(it.type.startsWith('image')){
+   const file=it.getAsFile();
+   const img=new Image();
+   img.onload=()=>{ctx.drawImage(img,0,0);saveState()};
+   img.src=URL.createObjectURL(file);
+  }
+ }
+});
+
+function pasteInfo(){alert('Użyj Ctrl+V aby wkleić obraz ze schowka')}
+
+// ===== Wklejanie obrazów =====
+document.addEventListener('paste',e=>{
+ const items=e.clipboardData?.items;
+ if(!items) return;
+ for(const it of items){
+  if(it.type.startsWith('image')){
+   const file=it.getAsFile();
+   const img=new Image();
+   img.onload=()=>{ctx.drawImage(img,0,0);saveState()};
+   img.src=URL.createObjectURL(file);
+  }
+ }
+});
+
+function pasteInfo(){alert('Użyj Ctrl+V aby wkleić obraz ze schowka')}
+
+function openImage(inp){let f=inp.files[0];let r=new FileReader();r.onload=e=>{let i=new Image();i.onload=()=>ctx.drawImage(i,0,0);i.src=e.target.result};r.readAsDataURL(f)}
+
+function showTab(id){document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));document.getElementById(id).classList.remove('hidden')}
+
+// PROSTE AI (algorytmiczne)
+function aiEnhance(){let d=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<d.data.length;i+=4){d.data[i]=Math.min(255,d.data[i]*1.1);d.data[i+1]=Math.min(255,d.data[i+1]*1.1);d.data[i+2]=Math.min(255,d.data[i+2]*1.1)}ctx.putImageData(d,0,0);saveState()}
+function aiColorize(){let d=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<d.data.length;i+=4){let avg=(d.data[i]+d.data[i+1]+d.data[i+2])/3;d.data[i]=avg;d.data[i+1]=avg*0.9;d.data[i+2]=avg*1.1}ctx.putImageData(d,0,0);saveState()}
 </script>
 </body>
 </html>
