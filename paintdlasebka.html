@@ -2,265 +2,169 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Nasz Paint – Full</title>
+<title>Nasz Paint</title>
 <style>
-body{margin:0;background:#1c1c1c;color:#fff;font-family:system-ui}
-#files{display:flex;gap:4px;padding:4px;background:#111}
-.file{padding:4px 8px;background:#333;cursor:pointer}
-.file.active{background:#555}
-#topbar{display:flex;flex-wrap:wrap;gap:6px;padding:6px;background:#2a2a2a}
-canvas{background:#fff;display:block;margin:0 auto;cursor:crosshair}
-select,input,button{background:#3a3a3a;color:#fff;border:none;padding:4px}
-#textInput{position:absolute;display:none;z-index:20;border:1px solid #000}
+body{margin:0;font-family:Arial;background:#2b2b2b;color:#fff}
+#toolbar{display:flex;flex-wrap:wrap;gap:6px;padding:8px;background:#1e1e1e}
+#toolbar>*{padding:4px}
+canvas{background:#fff;cursor:crosshair;display:block;margin:0 auto}
+input,select,button{background:#333;color:#fff;border:1px solid #555}
+button{cursor:pointer}
+#textInput{position:absolute;display:none;border:1px dashed #000;outline:none}
 </style>
 </head>
 <body>
 
-<div id="files"></div>
-
-<div id="topbar">
+<div id="toolbar">
 <select id="tool">
-<option value="brush">Pędzel</option>
-<option value="eraser">Gumka</option>
-<option value="line">Linia</option>
-<option value="rect">Prostokąt</option>
-<option value="ellipse">Elipsa</option>
-<option value="roundrect">Prostokąt zaokrąglony</option>
-<option value="polygon">Wielokąt</option>
-<option value="star">Gwiazda</option>
-<option value="arrow">Strzałka</option>
-<option value="fill">Kubełek</option>
-<option value="picker">Pipeta</option>
-<option value="text">Tekst</option>
-<option value="ai_auto">AI Auto</option>
-<option value="ai_line">AI Lineart</option>
-<option value="ai_color">AI Kolory</option>
+  <option value="brush">Pędzel</option>
+  <option value="eraser">Gumka</option>
+  <option value="line">Linia</option>
+  <option value="rect">Prostokąt</option>
+  <option value="circle">Koło</option>
+  <option value="text">Tekst</option>
 </select>
 
 <input type="color" id="color" value="#000000">
-<input type="range" id="size" min="1" max="50" value="5">
-<input type="range" id="sides" min="3" max="10" value="5">
+<input type="color" id="color2" value="#ff0000">
+<label><input type="checkbox" id="gradient"> Gradient</label>
+
+<input type="number" id="size" value="5" min="1" max="100">
 
 <select id="font">
-<option>Arial</option><option>Verdana</option>
-<option>Times New Roman</option><option>Courier New</option>
-<option>Comic Sans MS</option><option>Impact</option>
+<option>Arial</option>
+<option>Verdana</option>
+<option>Times New Roman</option>
+<option>Courier New</option>
+<option>Comic Sans MS</option>
+<option>Impact</option>
+<option>Georgia</option>
+<option>Tahoma</option>
+<option>Trebuchet MS</option>
+<option>Lucida Console</option>
+<option>monospace</option>
+<option>serif</option>
+<option>sans-serif</option>
 </select>
-<input type="number" id="fontSize" value="30" min="8" max="200">
+
+<input type="number" id="fontSize" value="24" min="8" max="200">
+<label><input type="checkbox" id="gradientText"> Gradient tekstu</label>
 
 <button onclick="undo()">Undo</button>
 <button onclick="redo()">Redo</button>
-<button onclick="newFile()">Nowy</button>
-<button onclick="savePNG()">Zapisz</button>
-<input type="file" onchange="openImage(this)">
+<button onclick="saveImg()">Zapisz</button>
 </div>
 
 <canvas id="canvas" width="1200" height="700"></canvas>
 <input id="textInput">
 
 <script>
-const canvas=canvas=document.getElementById("canvas");
-const ctx=canvas.getContext("2d");
-const tool=document.getElementById("tool");
-const color=document.getElementById("color");
-const size=document.getElementById("size");
-const sides=document.getElementById("sides");
-const font=document.getElementById("font");
-const fontSize=document.getElementById("fontSize");
-const textInput=document.getElementById("textInput");
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+const tool=document.getElementById('tool');
+const color=document.getElementById('color');
+const color2=document.getElementById('color2');
+const size=document.getElementById('size');
+const gradient=document.getElementById('gradient');
+const font=document.getElementById('font');
+const fontSize=document.getElementById('fontSize');
+const gradientText=document.getElementById('gradientText');
+const textInput=document.getElementById('textInput');
 
 let drawing=false,startX=0,startY=0;
-let files=[],current=0,history=[],redoStack=[];
+let history=[],redoStack=[];
 
-// ===== FILES =====
-function newFile(){
- files.push(null);
- current=files.length-1;
- ctx.clearRect(0,0,canvas.width,canvas.height);
- saveState();
- renderFiles();
-}
-function renderFiles(){
- const f=document.getElementById("files");
- f.innerHTML="";
- files.forEach((_,i)=>{
-  const d=document.createElement("div");
-  d.className="file"+(i===current?" active":"");
-  d.textContent="Plik "+(i+1);
-  d.onclick=()=>switchFile(i);
-  f.appendChild(d);
- });
-}
-function switchFile(i){
- files[current]=ctx.getImageData(0,0,canvas.width,canvas.height);
- current=i;
- ctx.putImageData(files[i],0,0);
- renderFiles();
-}
+function saveState(){history.push(canvas.toDataURL());redoStack=[];}
+saveState();
 
-// ===== HISTORY =====
-function saveState(){
- history.push(ctx.getImageData(0,0,canvas.width,canvas.height));
- redoStack=[];
-}
-function undo(){
- if(history.length<2)return;
- redoStack.push(history.pop());
- ctx.putImageData(history[history.length-1],0,0);
-}
-function redo(){
- if(!redoStack.length)return;
- const s=redoStack.pop();
- history.push(s);
- ctx.putImageData(s,0,0);
-}
-
-// ===== DRAW =====
 canvas.onmousedown=e=>{
- const r=canvas.getBoundingClientRect();
- startX=e.clientX-r.left;
- startY=e.clientY-r.top;
-
- if(tool.value==="text"){startText(startX,startY);return;}
- if(tool.value==="picker"){pick(startX,startY);return;}
- if(tool.value.startsWith("ai_")){runAI(tool.value);return;}
-
  drawing=true;
- saveState();
+ startX=e.offsetX;startY=e.offsetY;
+ if(tool.value==='text') startText(e.offsetX,e.offsetY);
 };
-canvas.onmousemove=e=>{
- if(!drawing)return;
- const r=canvas.getBoundingClientRect();
- const x=e.clientX-r.left,y=e.clientY-r.top;
 
- ctx.lineWidth=size.value;
- ctx.lineCap="round";
- ctx.strokeStyle=color.value;
- ctx.globalCompositeOperation="source-over";
-
- if(tool.value==="brush"){
-  ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();
-  startX=x;startY=y;
- }
- if(tool.value==="eraser"){
-  ctx.globalCompositeOperation="destination-out";
-  ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();
-  startX=x;startY=y;
- }
-};
-window.onmouseup=e=>{
+canvas.onmouseup=e=>{
  if(!drawing)return;
  drawing=false;
- const r=canvas.getBoundingClientRect();
- const x=e.clientX-r.left,y=e.clientY-r.top;
-
- ctx.strokeStyle=color.value;
- ctx.lineWidth=size.value;
-
- if(tool.value==="line"){ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.stroke();}
- if(tool.value==="rect"){ctx.strokeRect(startX,startY,x-startX,y-startY);}
- if(tool.value==="ellipse"){
-  ctx.beginPath();
-  ctx.ellipse((startX+x)/2,(startY+y)/2,Math.abs(x-startX)/2,Math.abs(y-startY)/2,0,0,Math.PI*2);
-  ctx.stroke();
- }
- if(tool.value==="roundrect"){
-  let r2=20;
-  ctx.beginPath();
-  ctx.moveTo(startX+r2,startY);
-  ctx.arcTo(x,startY,x,y,r2);
-  ctx.arcTo(x,y,startX,y,r2);
-  ctx.arcTo(startX,y,startX,startY,r2);
-  ctx.arcTo(startX,startY,x,startY,r2);
-  ctx.closePath();ctx.stroke();
- }
- if(tool.value==="polygon"){
-  ctx.beginPath();
-  for(let i=0;i<sides.value;i++){
-   const a=i*2*Math.PI/sides.value;
-   ctx.lineTo(startX+Math.cos(a)*Math.hypot(x-startX,y-startY),
-              startY+Math.sin(a)*Math.hypot(x-startX,y-startY));
-  }
-  ctx.closePath();ctx.stroke();
- }
- if(tool.value==="star"){
-  ctx.beginPath();
-  for(let i=0;i<10;i++){
-   const a=i*Math.PI/5;
-   const r=i%2?Math.hypot(x-startX,y-startY)/2:Math.hypot(x-startX,y-startY);
-   ctx.lineTo(startX+r*Math.cos(a),startY+r*Math.sin(a));
-  }
-  ctx.closePath();ctx.stroke();
- }
- if(tool.value==="arrow"){
-  const ang=Math.atan2(y-startY,x-startX);
-  ctx.beginPath();
-  ctx.moveTo(startX,startY);ctx.lineTo(x,y);
-  ctx.lineTo(x-10*Math.cos(ang-Math.PI/6),y-10*Math.sin(ang-Math.PI/6));
-  ctx.moveTo(x,y);
-  ctx.lineTo(x-10*Math.cos(ang+Math.PI/6),y-10*Math.sin(ang+Math.PI/6));
-  ctx.stroke();
- }
+ if(['line','rect','circle'].includes(tool.value)) drawShape(e.offsetX,e.offsetY);
+ saveState();
 };
 
-// ===== TEXT =====
+canvas.onmousemove=e=>{
+ if(!drawing)return;
+ if(tool.value==='brush'||tool.value==='eraser') drawBrush(e.offsetX,e.offsetY);
+};
+
+function drawBrush(x,y){
+ ctx.lineWidth=size.value;
+ ctx.lineCap='round';
+ ctx.beginPath();
+ ctx.moveTo(startX,startY);
+ ctx.lineTo(x,y);
+
+ if(tool.value==='eraser'){
+  ctx.globalCompositeOperation='destination-out';
+  ctx.strokeStyle='rgba(0,0,0,1)';
+ }else{
+  ctx.globalCompositeOperation='source-over';
+  if(gradient.checked){
+   let g=ctx.createLinearGradient(startX,startY,x,y);
+   g.addColorStop(0,color.value);
+   g.addColorStop(1,color2.value);
+   ctx.strokeStyle=g;
+  }else ctx.strokeStyle=color.value;
+ }
+ ctx.stroke();
+ startX=x;startY=y;
+}
+
+function drawShape(x,y){
+ ctx.lineWidth=size.value;
+ ctx.strokeStyle=color.value;
+ ctx.beginPath();
+ if(tool.value==='line'){
+  ctx.moveTo(startX,startY);ctx.lineTo(x,y);
+ }
+ if(tool.value==='rect') ctx.rect(startX,startY,x-startX,y-startY);
+ if(tool.value==='circle'){
+  let r=Math.hypot(x-startX,y-startY);
+  ctx.arc(startX,startY,r,0,Math.PI*2);
+ }
+ ctx.stroke();
+}
+
 function startText(x,y){
- const r=canvas.getBoundingClientRect();
- textInput.style.left=r.left+x+"px";
- textInput.style.top=r.top+y+"px";
- textInput.style.display="block";
- textInput.value="";
+ textInput.style.display='block';
+ textInput.style.left=x+'px';
+ textInput.style.top=y+'px';
+ textInput.value='';
  textInput.focus();
  textInput.onkeydown=e=>{
-  if(e.key==="Enter"){
-   ctx.fillStyle=color.value;
+  if(e.key==='Enter'){
    ctx.font=`${fontSize.value}px ${font.value}`;
-   ctx.fillText(textInput.value,x,y);
-   textInput.style.display="none";
+   let txt=textInput.value;
+   if(gradientText.checked){
+    let w=ctx.measureText(txt).width;
+    let g=ctx.createLinearGradient(x,y,x+w,y);
+    g.addColorStop(0,color.value);
+    g.addColorStop(1,color2.value);
+    ctx.fillStyle=g;
+   }else ctx.fillStyle=color.value;
+   ctx.fillText(txt,x,y);
+   textInput.style.display='none';
    saveState();
   }
-  if(e.key==="Escape")textInput.style.display="none";
  };
 }
 
-// ===== PICKER =====
-function pick(x,y){
- const d=ctx.getImageData(x,y,1,1).data;
- color.value=`rgb(${d[0]},${d[1]},${d[2]})`;
+function undo(){
+ if(history.length>1){redoStack.push(history.pop());load(history.at(-1));}
 }
-
-// ===== FILE =====
-function savePNG(){
- const a=document.createElement("a");
- a.href=canvas.toDataURL("image/png");
- a.download="paint.png";
- a.click();
+function redo(){
+ if(redoStack.length){let s=redoStack.pop();history.push(s);load(s);}
 }
-function openImage(i){
- const img=new Image();
- img.onload=()=>{ctx.drawImage(img,0,0);saveState();}
- img.src=URL.createObjectURL(i.files[0]);
-}
-
-// ===== AI =====
-function runAI(t){
- const img=ctx.getImageData(0,0,canvas.width,canvas.height);
- const d=img.data;
- for(let i=0;i<d.length;i+=4){
-  if(t==="ai_auto"){d[i]*=1.1;d[i+1]*=1.1;d[i+2]*=1.1;}
-  if(t==="ai_line"){
-   const g=(d[i]+d[i+1]+d[i+2])/3;
-   d[i]=d[i+1]=d[i+2]=g>128?255:0;
-  }
-  if(t==="ai_color"){d[i]+=20;d[i+1]+=10;}
- }
- ctx.putImageData(img,0,0);
- saveState();
-}
-
-// INIT
-newFile();
-renderFiles();
+function load(src){let i=new Image();i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0)};i.src=src}
+function saveImg(){let a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='paint.png';a.click()}
 </script>
 </body>
 </html>
