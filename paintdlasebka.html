@@ -3,17 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Paint V1.1</title>
+<title>Paint V1.2</title>
 <style>
 *{box-sizing:border-box;font-family:Arial, sans-serif}
 :root{--bg:#2b2b2b;--text:#fff;--bar:#1f1f1f;--panel:#222;--btn:#333}
 body.light{--bg:#f2f2f2;--text:#000;--bar:#ddd;--panel:#eee;--btn:#fff}
 body{margin:0;background:var(--bg);color:var(--text);overflow:hidden}
 #topbar{display:flex;gap:6px;padding:6px;background:var(--bar);flex-wrap:wrap}
-#sidebar{width:160px;background:var(--panel);padding:8px;display:flex;flex-direction:column;gap:6px}
+#sidebar{width:170px;background:var(--panel);padding:8px;display:flex;flex-direction:column;gap:6px}
 #container{display:flex;height:calc(100vh - 50px)}
-button,select,input{background:var(--btn);color:var(--text);border:1px solid #777;padding:4px}
-button:active{background:#555}
+button,select,input,textarea{background:var(--btn);color:var(--text);border:1px solid #777;padding:4px}
 canvas{background:#fff;touch-action:none}
 #workspace{flex:1;display:flex;justify-content:center;align-items:center;overflow:auto}
 .tab{display:none}
@@ -37,164 +36,174 @@ canvas{background:#fff;touch-action:none}
 <option value="shape">Kształty</option>
 <option value="ai">AI</option>
 </select>
+
 <div id="draw" class="tab active">
 <select id="tool">
 <option value="brush">Pędzel</option>
 <option value="pencil">Ołówek</option>
 <option value="pen">Długopis</option>
 <option value="eraser">Gumka</option>
+<option value="select">Zaznaczanie</option>
 </select>
 <input type="color" id="color1" value="#000000">
 <input type="color" id="color2" value="#ff0000">
 <label><input type="checkbox" id="useGradient"> Gradient</label>
 <input type="range" id="size" min="1" max="50" value="5">
 </div>
+
 <div id="text" class="tab">
 <input type="text" id="textInput" placeholder="Tekst">
 <select id="font">
-<option>Arial</option>
-<option>Verdana</option>
-<option>Times New Roman</option>
-<option>Courier New</option>
-<option>Georgia</option>
+<option>Arial</option><option>Verdana</option><option>Times New Roman</option>
+<option>Courier New</option><option>Georgia</option>
 </select>
 <input type="number" id="fontSize" value="24">
 <label><input type="checkbox" id="textGradient"> Gradient tekstu</label>
 </div>
+
 <div id="shape" class="tab">
 <select id="shapeType">
 <option value="line">Linia</option>
 <option value="rect">Prostokąt</option>
-<option value="roundRect">Prostokąt zaokrąglony</option>
 <option value="circle">Koło</option>
 <option value="ellipse">Elipsa</option>
 <option value="triangle">Trójkąt</option>
-<option value="arrow">Strzałka</option>
-<option value="star">Gwiazda</option>
-<option value="hex">Sześciokąt</option>
-<option value="heart">Serce</option>
-<option value="diamond">Romb</option>
 </select>
 </div>
+
 <div id="ai" class="tab">
-<textarea id="aiInput" placeholder="Np: popraw kolory, wygładź rysunek, odwróć kolory" style="width:100%;height:80px"></textarea>
+<textarea id="aiInput" placeholder="Np: odwróć kolory, rozjaśnij" style="height:80px"></textarea>
 <button onclick="runAI()">Wykonaj</button>
-<div id="aiLog" style="font-size:12px;opacity:.8"></div>
+<div id="aiLog" style="font-size:12px"></div>
 </div>
 </div>
+
 <div id="workspace">
 <canvas id="canvas" width="1200" height="700"></canvas>
 </div>
 </div>
-<script>
-// ====== STABILNY SILNIK PAINTA (NAPRAWIONY) ======
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
-let drawing = false;
-let startX = 0, startY = 0;
-let history = [], redoStack = [];
 
-function pos(e){
-  const r = canvas.getBoundingClientRect();
-  return [e.clientX - r.left, e.clientY - r.top];
-}
-function tool(){ return document.getElementById('tool').value }
-function size(){ return +document.getElementById('size').value }
-function color1(){ return document.getElementById('color1').value }
-function color2(){ return document.getElementById('color2').value }
-function useGradient(){ return document.getElementById('useGradient').checked }
+<script>
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let drawing=false,startX=0,startY=0;
+let history=[],redoStack=[];
+let currentTool='brush';
+let selection=null;
+
+function pos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function size(){return+document.getElementById('size').value}
+function color1(){return document.getElementById('color1').value}
+function color2(){return document.getElementById('color2').value}
+function useGradient(){return document.getElementById('useGradient').checked}
+function tool(){return currentTool}
+
+document.getElementById('tool').onchange=e=>currentTool=e.target.value;
 
 function getStroke(x1,y1,x2,y2){
-  if(useGradient()){
-    const g = ctx.createLinearGradient(x1,y1,x2,y2);
-    g.addColorStop(0,color1());
-    g.addColorStop(1,color2());
-    return g;
-  }
-  return color1();
+ if(useGradient()){
+  const g=ctx.createLinearGradient(x1,y1,x2,y2);
+  g.addColorStop(0,color1());g.addColorStop(1,color2());
+  return g;
+ }
+ return color1();
 }
 
-canvas.addEventListener('pointerdown', e => {
-  drawing = true;
-  [startX,startY] = pos(e);
-  ctx.beginPath();
-  ctx.moveTo(startX,startY);
-  ctx.lineCap = 'round';
-  ctx.lineWidth = size();
-  ctx.globalCompositeOperation = tool()==='eraser' ? 'destination-out' : 'source-over';
+canvas.addEventListener('pointerdown',e=>{
+ if(activeTab()!=='draw') return;
+ drawing=true;[startX,startY]=pos(e);
+ if(tool()==='select'){selection={x:startX,y:startY,w:0,h:0};return;}
+ ctx.beginPath();ctx.moveTo(startX,startY);
+ ctx.lineWidth=size();ctx.lineCap='round';
+ ctx.globalCompositeOperation=tool()==='eraser'?'destination-out':'source-over';
+});
+ if(tool()==='select'){selection={x:startX,y:startY,w:0,h:0};return;}
+ ctx.beginPath();ctx.moveTo(startX,startY);
+ ctx.lineWidth=size();ctx.lineCap='round';
+ ctx.globalCompositeOperation=tool()==='eraser'?'destination-out':'source-over';
 });
 
-canvas.addEventListener('pointermove', e => {
-  if(!drawing) return;
-  const [x,y] = pos(e);
-  if(['brush','pencil','pen','eraser'].includes(tool())){
-    ctx.strokeStyle = tool()==='eraser' ? '#000' : getStroke(startX,startY,x,y);
-    ctx.lineTo(x,y);
-    ctx.stroke();
-    startX=x; startY=y;
-  }
+canvas.addEventListener('pointermove',e=>{
+ if(!drawing || activeTab()!=='draw') return;
+ const[x,y]=pos(e);
+ if(tool()==='select'&&selection){selection.w=x-selection.x;selection.h=y-selection.y;return;}
+ if(['brush','pencil','pen','eraser'].includes(tool())){
+  ctx.strokeStyle=tool()==='eraser'?'#000':getStroke(startX,startY,x,y);
+  ctx.lineTo(x,y);ctx.stroke();startX=x;startY=y;
+ }
+});
+ if(tool()==='select'&&selection){selection.w=x-selection.x;selection.h=y-selection.y;return;}
+ if(['brush','pencil','pen','eraser'].includes(tool())){
+  ctx.strokeStyle=tool()==='eraser'?'#000':getStroke(startX,startY,x,y);
+  ctx.lineTo(x,y);ctx.stroke();startX=x;startY=y;
+ }
 });
 
-canvas.addEventListener('pointerup', ()=>{
-  if(!drawing) return;
-  drawing=false;
-  ctx.closePath();
-  saveState();
+canvas.addEventListener('pointerup',()=>{
+ if(!drawing || activeTab()!=='draw') return;
+ drawing=false;
+ if(tool()==='select'&&selection){
+  ctx.setLineDash([6]);ctx.strokeStyle='#00f';
+  ctx.strokeRect(selection.x,selection.y,selection.w,selection.h);
+  ctx.setLineDash([]);selection=null;return;
+ }
+ ctx.closePath();saveState();
+});ctx.strokeStyle='#00f';
+  ctx.strokeRect(selection.x,selection.y,selection.w,selection.h);
+  ctx.setLineDash([]);selection=null;return;
+ }
+ ctx.closePath();saveState();
 });
 
-// ===== TEKST =====
-canvas.addEventListener('click', e => {
-  if(activeTab()!=='text') return;
-  const [x,y] = pos(e);
-  const txt = document.getElementById('textInput').value;
-  if(!txt) return;
-  ctx.font = `${document.getElementById('fontSize').value}px ${document.getElementById('font').value}`;
-  ctx.fillStyle = document.getElementById('textGradient').checked ? getStroke(x,y,x+200,y) : color1();
-  ctx.fillText(txt,x,y);
-  saveState();
+// KSZTAŁTY
+let shapeStart=null;
+canvas.addEventListener('pointerdown',e=>{if(activeTab()==='shape')shapeStart=pos(e)});
+canvas.addEventListener('pointerup',e=>{
+ if(activeTab()!=='shape'||!shapeStart)return;
+ const[x2,y2]=pos(e);const[x1,y1]=shapeStart;
+ ctx.beginPath();ctx.lineWidth=size();ctx.strokeStyle=getStroke(x1,y1,x2,y2);
+ const t=document.getElementById('shapeType').value;
+ if(t==='line'){ctx.moveTo(x1,y1);ctx.lineTo(x2,y2)}
+ if(t==='rect'){ctx.rect(x1,y1,x2-x1,y2-y1)}
+ if(t==='circle'){const r=Math.hypot(x2-x1,y2-y1);ctx.arc(x1,y1,r,0,Math.PI*2)}
+ if(t==='ellipse'){ctx.ellipse(x1,y1,Math.abs(x2-x1),Math.abs(y2-y1),0,0,Math.PI*2)}
+ if(t==='triangle'){ctx.moveTo(x1,y2);ctx.lineTo((x1+x2)/2,y1);ctx.lineTo(x2,y2);ctx.closePath()}
+ ctx.stroke();shapeStart=null;saveState();
 });
 
-// ===== HISTORIA =====
-function saveState(){ history.push(canvas.toDataURL()); redoStack=[] }
-function undo(){ if(history.length<2) return; redoStack.push(history.pop()); load(history.at(-1)); }
-function redo(){ if(!redoStack.length) return; const s=redoStack.pop(); history.push(s); load(s); }
-function load(src){ const i=new Image(); i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0)}; i.src=src }
-
-// ===== PLIKI =====
-function newFile(){ ctx.clearRect(0,0,canvas.width,canvas.height); saveState() }
-function saveImage(){ const a=document.createElement('a'); a.href=canvas.toDataURL(); a.download='paint.png'; a.click() }
-function openImage(e){ const f=e.target.files[0]; if(!f) return; const i=new Image(); i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0,canvas.width,canvas.height); saveState()}; i.src=URL.createObjectURL(f) }
-
-document.addEventListener('paste', e => {
-  for(const it of e.clipboardData.items){
-    if(it.type.startsWith('image')){
-      const f = it.getAsFile();
-      const i = new Image();
-      i.onload = ()=>{ctx.drawImage(i,0,0); saveState()};
-      i.src = URL.createObjectURL(f);
-    }
-  }
+// TEKST
+canvas.addEventListener('click',e=>{
+ if(activeTab()!=='text')return;
+ const[x,y]=pos(e);const t=document.getElementById('textInput').value;
+ if(!t)return;
+ ctx.font=`${document.getElementById('fontSize').value}px ${document.getElementById('font').value}`;
+ ctx.fillStyle=document.getElementById('textGradient').checked?getStroke(x,y,x+200,y):color1();
+ ctx.fillText(t,x,y);saveState();
 });
 
-// ===== UI =====
-function setTab(t){ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.getElementById(t).classList.add('active') }
-function activeTab(){ return document.querySelector('.tab.active')?.id }
-function toggleTheme(){ document.body.classList.toggle('light') }
+// HISTORIA
+function saveState(){history.push(canvas.toDataURL());redoStack=[]}
+function undo(){if(history.length<2)return;redoStack.push(history.pop());load(history.at(-1))}
+function redo(){if(!redoStack.length)return;const s=redoStack.pop();history.push(s);load(s)}
+function load(src){const i=new Image();i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0)};i.src=src}
 
-// ===== AI (STABILNE) =====
-function runAI(){
-  const q=document.getElementById('aiInput').value.toLowerCase();
-  const log=document.getElementById('aiLog');
-  if(!q){log.innerText='Nic nie wpisano';return}
-  saveState();
-  if(q.includes('odwr')){invert();log.innerText='AI: odwrócono kolory';return}
-  if(q.includes('jas')){brighten();log.innerText='AI: rozjaśniono';return}
-  log.innerText='AI: brak akcji';
-}
-function invert(){const img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=255-img.data[i];img.data[i+1]=255-img.data[i+1];img.data[i+2]=255-img.data[i+2]}ctx.putImageData(img,0,0)}
-function brighten(){const img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=Math.min(255,img.data[i]*1.15);img.data[i+1]=Math.min(255,img.data[i+1]*1.15);img.data[i+2]=Math.min(255,img.data[i+2]*1.15)}ctx.putImageData(img,0,0)}
+// PLIKI
+function newFile(){ctx.clearRect(0,0,canvas.width,canvas.height);saveState()}
+function saveImage(){const a=document.createElement('a');a.href=canvas.toDataURL();a.download='paint.png';a.click()}
+function openImage(e){const f=e.target.files[0];if(!f)return;const i=new Image();i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0,canvas.width,canvas.height);saveState()};i.src=URL.createObjectURL(f)}
 
-// init
+document.addEventListener('paste',e=>{for(const it of e.clipboardData.items){if(it.type.startsWith('image')){const f=it.getAsFile();const i=new Image();i.onload=()=>{ctx.drawImage(i,0,0);saveState()};i.src=URL.createObjectURL(f)}}});
+
+// UI
+function setTab(t){document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.getElementById(t).classList.add('active')}
+function activeTab(){return document.querySelector('.tab.active')?.id}
+function toggleTheme(){document.body.classList.toggle('light')}
+
+// AI
+function runAI(){const q=document.getElementById('aiInput').value.toLowerCase();const log=document.getElementById('aiLog');if(!q){log.innerText='Brak polecenia';return;}saveState();if(q.includes('odwr')){invert();log.innerText='AI: odwrócono kolory';return;}if(q.includes('jas')){brighten();log.innerText='AI: rozjaśniono';return;}log.innerText='AI: brak akcji';}
+function invert(){const d=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<d.data.length;i+=4){d.data[i]=255-d.data[i];d.data[i+1]=255-d.data[i+1];d.data[i+2]=255-d.data[i+2]}ctx.putImageData(d,0,0)}
+function brighten(){const d=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<d.data.length;i+=4){d.data[i]=Math.min(255,d.data[i]*1.15);d.data[i+1]=Math.min(255,d.data[i+1]*1.15);d.data[i+2]=Math.min(255,d.data[i+2]*1.15)}ctx.putImageData(d,0,0)}
+
 saveState();
 </script>
 </body>
