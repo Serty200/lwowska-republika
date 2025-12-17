@@ -2,119 +2,144 @@
 <html lang="pl">
 <head>
 <meta charset="UTF-8">
-<title>Paint v1.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Paint V1.1</title>
 <style>
-body{margin:0;font-family:Arial;background:#2b2b2b;color:#eee;overflow:hidden}
-#topbar{height:40px;background:#1f1f1f;display:flex;align-items:center;padding:0 10px;gap:10px}
-#container{display:flex;height:calc(100vh - 40px)}
-#tools,#options,#files{width:220px;background:#1e1e1e;padding:10px;overflow:auto}
-#files{border-left:1px solid #333}
-#canvasWrap{flex:1;display:flex;justify-content:center;align-items:center;background:#3a3a3a}
-canvas{background:#fff;box-shadow:0 0 10px #000}
-button,select,input{width:100%;margin-bottom:6px;background:#333;color:#fff;border:1px solid #555;padding:4px}
-h3{margin:6px 0;font-size:14px;border-bottom:1px solid #444}
+*{box-sizing:border-box;font-family:Arial, sans-serif}
+:root{--bg:#2b2b2b;--text:#fff;--bar:#1f1f1f;--panel:#222;--btn:#333}
+body.light{--bg:#f2f2f2;--text:#000;--bar:#ddd;--panel:#eee;--btn:#fff}
+body{margin:0;background:var(--bg);color:var(--text);overflow:hidden}
+#topbar{display:flex;gap:6px;padding:6px;background:var(--bar);flex-wrap:wrap}
+#sidebar{width:160px;background:var(--panel);padding:8px;display:flex;flex-direction:column;gap:6px}
+#container{display:flex;height:calc(100vh - 50px)}
+button,select,input{background:var(--btn);color:var(--text);border:1px solid #777;padding:4px}
+button:active{background:#555}
+canvas{background:#fff;touch-action:none}
+#workspace{flex:1;display:flex;justify-content:center;align-items:center;overflow:auto}
 .tab{display:none}
-.tab.active{display:block}
+.tab.active{display:flex;flex-direction:column;gap:6px}
 </style>
 </head>
 <body>
 <div id="topbar">
+<button onclick="toggleTheme()">🌙 / ☀️</button>
 <button onclick="newFile()">Nowy</button>
-<button onclick="savePNG()">Zapisz PNG</button>
 <button onclick="undo()">Cofnij</button>
 <button onclick="redo()">Ponów</button>
-<button onclick="switchTab('draw')">Rysowanie</button>
-<button onclick="switchTab('text')">Tekst</button>
-<button onclick="switchTab('shapes')">Kształty</button>
-<button onclick="switchTab('ai')">AI</button>
+<button onclick="saveImage()">Zapisz</button>
 <input type="file" accept="image/*" onchange="openImage(event)">
 </div>
 <div id="container">
-<div id="tools">
+<div id="sidebar">
+<select onchange="setTab(this.value)">
+<option value="draw">Rysowanie</option>
+<option value="text">Tekst</option>
+<option value="shape">Kształty</option>
+<option value="ai">AI</option>
+</select>
 <div id="draw" class="tab active">
-<h3>Narzędzia</h3>
 <select id="tool">
 <option value="brush">Pędzel</option>
 <option value="pencil">Ołówek</option>
 <option value="pen">Długopis</option>
-<option value="marker">Cienkopis</option>
 <option value="eraser">Gumka</option>
 </select>
-<label>Kolor 1</label><input type="color" id="color1" value="#000000">
-<label>Kolor 2</label><input type="color" id="color2" value="#ff0000">
-<label>Grubość</label><input type="range" id="size" min="1" max="50" value="5">
-<label>Gradient</label><input type="checkbox" id="useGradient">
+<input type="color" id="color1" value="#000000">
+<input type="color" id="color2" value="#ff0000">
+<label><input type="checkbox" id="useGradient"> Gradient</label>
+<input type="range" id="size" min="1" max="50" value="5">
 </div>
 <div id="text" class="tab">
-<h3>Tekst</h3>
-<input id="textValue" placeholder="Tekst">
+<input type="text" id="textInput" placeholder="Tekst">
 <select id="font">
-<option>Arial</option><option>Verdana</option><option>Courier New</option><option>Times New Roman</option><option>Comic Sans MS</option>
+<option>Arial</option>
+<option>Verdana</option>
+<option>Times New Roman</option>
+<option>Courier New</option>
+<option>Georgia</option>
 </select>
-<input type="number" id="textSize" value="30">
-<label>Gradient tekstu</label><input type="checkbox" id="textGradient">
-<button onclick="enableText()">Wstaw tekst</button>
+<input type="number" id="fontSize" value="24">
+<label><input type="checkbox" id="textGradient"> Gradient tekstu</label>
 </div>
-<div id="shapes" class="tab">
-<h3>Kształty</h3>
-<button onclick="setShape('rect')">Prostokąt</button>
-<button onclick="setShape('circle')">Koło</button>
-<button onclick="setShape('line')">Linia</button>
-<button onclick="setShape('triangle')">Trójkąt</button>
+<div id="shape" class="tab">
+<select id="shapeType">
+<option value="line">Linia</option>
+<option value="rect">Prostokąt</option>
+<option value="roundRect">Prostokąt zaokrąglony</option>
+<option value="circle">Koło</option>
+<option value="ellipse">Elipsa</option>
+<option value="triangle">Trójkąt</option>
+<option value="arrow">Strzałka</option>
+<option value="star">Gwiazda</option>
+<option value="hex">Sześciokąt</option>
+<option value="heart">Serce</option>
+<option value="diamond">Romb</option>
+</select>
 </div>
 <div id="ai" class="tab">
-<h3>AI (lokalne)</h3>
-<button onclick="aiEnhance()">Popraw kolory</button>
-<button onclick="aiClean()">Wygładź linie</button>
-<button onclick="aiInvert()">Odwróć kolory</button>
-<p style="font-size:12px">AI działa lokalnie (analiza pikseli canvas)</p>
+<textarea id="aiInput" placeholder="Np: popraw kolory, wygładź rysunek, odwróć kolory" style="width:100%;height:80px"></textarea>
+<button onclick="runAI()">Wykonaj</button>
+<div id="aiLog" style="font-size:12px;opacity:.8"></div>
 </div>
 </div>
-<div id="canvasWrap">
-<canvas id="canvas" width="1000" height="700"></canvas>
-</div>
-<div id="files">
-<h3>Pliki</h3>
-<div id="fileList"></div>
+<div id="workspace">
+<canvas id="canvas" width="1200" height="700"></canvas>
 </div>
 </div>
 <script>
 const canvas=document.getElementById('canvas');
 const ctx=canvas.getContext('2d');
-let drawing=false,startX,startY,mode='draw',shape=null;
-let history=[],redoStack=[];
+let drawing=false,startX=0,startY=0,history=[],redoStack=[];
+canvas.tabIndex=1;
+canvas.addEventListener('pointerdown',e=>{
+ drawing=true;[startX,startY]=pos(e);
+ ctx.beginPath();ctx.moveTo(startX,startY);
+ ctx.globalCompositeOperation=(tool()==='eraser')?'destination-out':'source-over'
+});if(tool()==='eraser'){ctx.globalCompositeOperation='destination-out'}else{ctx.globalCompositeOperation='source-over'}ctx.beginPath();ctx.moveTo(startX,startY)});
+canvas.addEventListener('pointermove',e=>{
+ if(!drawing)return;const[x,y]=pos(e);
+ if(['brush','pencil','pen','eraser'].includes(tool())){drawLine(startX,startY,x,y);startX=x;startY=y}
+});if(['brush','pencil','pen','eraser'].includes(tool())){drawLine(startX,startY,x,y);startX=x;startY=y}});
+canvas.addEventListener('pointerup',()=>{drawing=false;ctx.closePath();saveState()});saveState()});
+function pos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function tool(){return document.getElementById('tool').value}
+function drawLine(x1,y1,x2,y2){ctx.lineWidth=size();ctx.lineCap='round';ctx.strokeStyle=strokeStyle(x1,y1,x2,y2);ctx.lineTo(x2,y2);ctx.stroke()}
+function strokeStyle(x1,y1,x2,y2){if(document.getElementById('useGradient').checked){const g=ctx.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,color1());g.addColorStop(1,color2());return g}return color1()}
+function size(){return document.getElementById('size').value}else ctx.strokeStyle=color1();ctx.lineTo(x2,y2);ctx.stroke()}
+function color1(){return document.getElementById('color1').value}
+function color2(){return document.getElementById('color2').value}
+canvas.addEventListener('click',e=>{if(activeTab()==='text'){const[x,y]=pos(e);ctx.font=`${fontSize()}px ${font()}`;if(document.getElementById('textGradient').checked){const g=ctx.createLinearGradient(x,y,x+200,y);g.addColorStop(0,color1());g.addColorStop(1,color2());ctx.fillStyle=g}else ctx.fillStyle=color1();ctx.fillText(textVal(),x,y);saveState()}});
+function textVal(){return document.getElementById('textInput').value}
+function font(){return document.getElementById('font').value}
+function fontSize(){return document.getElementById('fontSize').value}
+function saveState(){history.push(canvas.toDataURL());redoStack=[]}
+function undo(){if(history.length<1)return;redoStack.push(canvas.toDataURL());const img=new Image();img.src=history.pop();img.onload=()=>ctx.drawImage(img,0,0)}
+function redo(){if(!redoStack.length)return;const img=new Image();img.src=redoStack.pop();img.onload=()=>ctx.drawImage(img,0,0)}
+function newFile(){ctx.clearRect(0,0,canvas.width,canvas.height);saveState()}
+function saveImage(){const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='paint.png';a.click()}
+function openImage(e){const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);saveState()};img.src=URL.createObjectURL(f)}
+document.addEventListener('paste',e=>{for(const i of e.clipboardData.items){if(i.type.startsWith('image')){const f=i.getAsFile();const img=new Image();img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);saveState()};img.src=URL.createObjectURL(f)}}});
+function setTab(t){document.querySelectorAll('.tab').forEach(d=>d.classList.remove('active'));document.getElementById(t).classList.add('active')}
+function activeTab(){return document.querySelector('.tab.active').id}
+window.addEventListener('resize',()=>{if(window.innerWidth<700){canvas.width=window.innerWidth-20;canvas.height=window.innerHeight-120}});
+saveState();
 
-function saveState(){history.push(canvas.toDataURL());if(history.length>50)history.shift();redoStack=[]}
-function undo(){if(history.length){redoStack.push(canvas.toDataURL());let img=new Image();img.src=history.pop();img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0)}}}
-function redo(){if(redoStack.length){let img=new Image();img.src=redoStack.pop();img.onload=()=>{saveState();ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0)}}}
+function toggleTheme(){document.body.classList.toggle('light')}
 
-canvas.onmousedown=e=>{drawing=true;startX=e.offsetX;startY=e.offsetY;saveState()}
-canvas.onmouseup=e=>{drawing=false;if(shape)drawShape(e.offsetX,e.offsetY)}
-canvas.onmousemove=e=>{
- if(!drawing||shape)return;
- let tool=document.getElementById('tool').value;
- ctx.lineWidth=size.value;
- if(tool==='eraser'){ctx.globalCompositeOperation='destination-out'}else{ctx.globalCompositeOperation='source-over'}
- let grad=null;
- if(useGradient.checked){grad=ctx.createLinearGradient(startX,startY,e.offsetX,e.offsetY);grad.addColorStop(0,color1.value);grad.addColorStop(1,color2.value);ctx.strokeStyle=grad}else ctx.strokeStyle=color1.value;
- ctx.beginPath();ctx.moveTo(startX,startY);ctx.lineTo(e.offsetX,e.offsetY);ctx.stroke();startX=e.offsetX;startY=e.offsetY
+// ===== AI CHATBOT (LOKALNE, REALNE) =====
+function runAI(){
+ const q=document.getElementById('aiInput').value.toLowerCase();
+ const log=document.getElementById('aiLog');
+ if(!q){log.innerText='Nic nie wpisano';return}
+ saveState();
+ if(q.includes('odwr')){invert();log.innerText='AI: odwrócono kolory';return}
+ if(q.includes('wygład')){smooth();log.innerText='AI: wygładzono linie';return}
+ if(q.includes('jas')){brighten();log.innerText='AI: zwiększono jasność';return}
+ log.innerText='AI: nie rozumiem polecenia';
 }
-
-function setShape(s){shape=s}
-function drawShape(x,y){ctx.strokeStyle=color1.value;ctx.lineWidth=size.value;ctx.beginPath();if(shape==='rect')ctx.rect(startX,startY,x-startX,y-startY);if(shape==='circle'){let r=Math.hypot(x-startX,y-startY);ctx.arc(startX,startY,r,0,Math.PI*2)}if(shape==='line'){ctx.moveTo(startX,startY);ctx.lineTo(x,y)}if(shape==='triangle'){ctx.moveTo(startX,startY);ctx.lineTo(x,y);ctx.lineTo(startX,y);ctx.closePath()}ctx.stroke();shape=null}
-
-function enableText(){canvas.onclick=e=>{ctx.font=textSize.value+'px '+font.value;let fill=color1.value;if(textGradient.checked){let g=ctx.createLinearGradient(e.offsetX,e.offsetY,e.offsetX+200,e.offsetY);g.addColorStop(0,color1.value);g.addColorStop(1,color2.value);fill=g}ctx.fillStyle=fill;ctx.fillText(textValue.value,e.offsetX,e.offsetY);canvas.onclick=null;saveState()}}
-
-function aiEnhance(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=Math.min(255,img.data[i]*1.1);img.data[i+1]=Math.min(255,img.data[i+1]*1.1);img.data[i+2]=Math.min(255,img.data[i+2]*1.1)}ctx.putImageData(img,0,0)}
-function aiInvert(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=255-img.data[i];img.data[i+1]=255-img.data[i+1];img.data[i+2]=255-img.data[i+2]}ctx.putImageData(img,0,0)}
-function aiClean(){ctx.filter='blur(0.6px)';let img=new Image();img.src=canvas.toDataURL();img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0);ctx.filter='none'}}
-
-function savePNG(){let a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='paint.png';a.click()}
-function openImage(e){let f=e.target.files[0];let img=new Image();img.src=URL.createObjectURL(f);img.onload=()=>{saveState();ctx.drawImage(img,0,0)}}
-function newFile(){saveState();ctx.clearRect(0,0,canvas.width,canvas.height)}
-function switchTab(t){document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));document.getElementById(t).classList.add('active')}
-
-document.addEventListener('paste',e=>{let it=e.clipboardData.items;for(let i of it)if(i.type.indexOf('image')!==-1){let f=i.getAsFile();let img=new Image();img.src=URL.createObjectURL(f);img.onload=()=>{saveState();ctx.drawImage(img,0,0)}}})
+function invert(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=255-img.data[i];img.data[i+1]=255-img.data[i+1];img.data[i+2]=255-img.data[i+2]}ctx.putImageData(img,0,0)}
+function brighten(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=Math.min(255,img.data[i]*1.1);img.data[i+1]=Math.min(255,img.data[i+1]*1.1);img.data[i+2]=Math.min(255,img.data[i+2]*1.1)}ctx.putImageData(img,0,0)}
+function smooth(){ctx.filter='blur(0.7px)';const im=new Image();im.src=canvas.toDataURL();im.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(im,0,0);ctx.filter='none'} }
 </script>
 </body>
 </html>
