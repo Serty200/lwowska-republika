@@ -87,59 +87,115 @@ canvas{background:#fff;touch-action:none}
 </div>
 </div>
 <script>
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
-let drawing=false,startX=0,startY=0,history=[],redoStack=[];
-canvas.tabIndex=1;
-canvas.addEventListener('pointerdown',e=>{
- drawing=true;[startX,startY]=pos(e);
- ctx.beginPath();ctx.moveTo(startX,startY);
- ctx.globalCompositeOperation=(tool()==='eraser')?'destination-out':'source-over'
-});if(tool()==='eraser'){ctx.globalCompositeOperation='destination-out'}else{ctx.globalCompositeOperation='source-over'}ctx.beginPath();ctx.moveTo(startX,startY)});
-canvas.addEventListener('pointermove',e=>{
- if(!drawing)return;const[x,y]=pos(e);
- if(['brush','pencil','pen','eraser'].includes(tool())){drawLine(startX,startY,x,y);startX=x;startY=y}
-});if(['brush','pencil','pen','eraser'].includes(tool())){drawLine(startX,startY,x,y);startX=x;startY=y}});
-canvas.addEventListener('pointerup',()=>{drawing=false;ctx.closePath();saveState()});saveState()});
-function pos(e){const r=canvas.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
-function tool(){return document.getElementById('tool').value}
-function drawLine(x1,y1,x2,y2){ctx.lineWidth=size();ctx.lineCap='round';ctx.strokeStyle=strokeStyle(x1,y1,x2,y2);ctx.lineTo(x2,y2);ctx.stroke()}
-function strokeStyle(x1,y1,x2,y2){if(document.getElementById('useGradient').checked){const g=ctx.createLinearGradient(x1,y1,x2,y2);g.addColorStop(0,color1());g.addColorStop(1,color2());return g}return color1()}
-function size(){return document.getElementById('size').value}else ctx.strokeStyle=color1();ctx.lineTo(x2,y2);ctx.stroke()}
-function color1(){return document.getElementById('color1').value}
-function color2(){return document.getElementById('color2').value}
-canvas.addEventListener('click',e=>{if(activeTab()==='text'){const[x,y]=pos(e);ctx.font=`${fontSize()}px ${font()}`;if(document.getElementById('textGradient').checked){const g=ctx.createLinearGradient(x,y,x+200,y);g.addColorStop(0,color1());g.addColorStop(1,color2());ctx.fillStyle=g}else ctx.fillStyle=color1();ctx.fillText(textVal(),x,y);saveState()}});
-function textVal(){return document.getElementById('textInput').value}
-function font(){return document.getElementById('font').value}
-function fontSize(){return document.getElementById('fontSize').value}
-function saveState(){history.push(canvas.toDataURL());redoStack=[]}
-function undo(){if(history.length<1)return;redoStack.push(canvas.toDataURL());const img=new Image();img.src=history.pop();img.onload=()=>ctx.drawImage(img,0,0)}
-function redo(){if(!redoStack.length)return;const img=new Image();img.src=redoStack.pop();img.onload=()=>ctx.drawImage(img,0,0)}
-function newFile(){ctx.clearRect(0,0,canvas.width,canvas.height);saveState()}
-function saveImage(){const a=document.createElement('a');a.href=canvas.toDataURL('image/png');a.download='paint.png';a.click()}
-function openImage(e){const f=e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);saveState()};img.src=URL.createObjectURL(f)}
-document.addEventListener('paste',e=>{for(const i of e.clipboardData.items){if(i.type.startsWith('image')){const f=i.getAsFile();const img=new Image();img.onload=()=>{ctx.drawImage(img,0,0,canvas.width,canvas.height);saveState()};img.src=URL.createObjectURL(f)}}});
-function setTab(t){document.querySelectorAll('.tab').forEach(d=>d.classList.remove('active'));document.getElementById(t).classList.add('active')}
-function activeTab(){return document.querySelector('.tab.active').id}
-window.addEventListener('resize',()=>{if(window.innerWidth<700){canvas.width=window.innerWidth-20;canvas.height=window.innerHeight-120}});
-saveState();
+// ====== STABILNY SILNIK PAINTA (NAPRAWIONY) ======
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let drawing = false;
+let startX = 0, startY = 0;
+let history = [], redoStack = [];
 
-function toggleTheme(){document.body.classList.toggle('light')}
-
-// ===== AI CHATBOT (LOKALNE, REALNE) =====
-function runAI(){
- const q=document.getElementById('aiInput').value.toLowerCase();
- const log=document.getElementById('aiLog');
- if(!q){log.innerText='Nic nie wpisano';return}
- saveState();
- if(q.includes('odwr')){invert();log.innerText='AI: odwrócono kolory';return}
- if(q.includes('wygład')){smooth();log.innerText='AI: wygładzono linie';return}
- if(q.includes('jas')){brighten();log.innerText='AI: zwiększono jasność';return}
- log.innerText='AI: nie rozumiem polecenia';
+function pos(e){
+  const r = canvas.getBoundingClientRect();
+  return [e.clientX - r.left, e.clientY - r.top];
 }
-function invert(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=255-img.data[i];img.data[i+1]=255-img.data[i+1];img.data[i+2]=255-img.data[i+2]}ctx.putImageData(img,0,0)}
-function brighten(){let img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=Math.min(255,img.data[i]*1.1);img.data[i+1]=Math.min(255,img.data[i+1]*1.1);img.data[i+2]=Math.min(255,img.data[i+2]*1.1)}ctx.putImageData(img,0,0)}
-function smooth(){ctx.filter='blur(0.7px)';const im=new Image();im.src=canvas.toDataURL();im.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(im,0,0);ctx.filter='none'} }
+function tool(){ return document.getElementById('tool').value }
+function size(){ return +document.getElementById('size').value }
+function color1(){ return document.getElementById('color1').value }
+function color2(){ return document.getElementById('color2').value }
+function useGradient(){ return document.getElementById('useGradient').checked }
+
+function getStroke(x1,y1,x2,y2){
+  if(useGradient()){
+    const g = ctx.createLinearGradient(x1,y1,x2,y2);
+    g.addColorStop(0,color1());
+    g.addColorStop(1,color2());
+    return g;
+  }
+  return color1();
+}
+
+canvas.addEventListener('pointerdown', e => {
+  drawing = true;
+  [startX,startY] = pos(e);
+  ctx.beginPath();
+  ctx.moveTo(startX,startY);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = size();
+  ctx.globalCompositeOperation = tool()==='eraser' ? 'destination-out' : 'source-over';
+});
+
+canvas.addEventListener('pointermove', e => {
+  if(!drawing) return;
+  const [x,y] = pos(e);
+  if(['brush','pencil','pen','eraser'].includes(tool())){
+    ctx.strokeStyle = tool()==='eraser' ? '#000' : getStroke(startX,startY,x,y);
+    ctx.lineTo(x,y);
+    ctx.stroke();
+    startX=x; startY=y;
+  }
+});
+
+canvas.addEventListener('pointerup', ()=>{
+  if(!drawing) return;
+  drawing=false;
+  ctx.closePath();
+  saveState();
+});
+
+// ===== TEKST =====
+canvas.addEventListener('click', e => {
+  if(activeTab()!=='text') return;
+  const [x,y] = pos(e);
+  const txt = document.getElementById('textInput').value;
+  if(!txt) return;
+  ctx.font = `${document.getElementById('fontSize').value}px ${document.getElementById('font').value}`;
+  ctx.fillStyle = document.getElementById('textGradient').checked ? getStroke(x,y,x+200,y) : color1();
+  ctx.fillText(txt,x,y);
+  saveState();
+});
+
+// ===== HISTORIA =====
+function saveState(){ history.push(canvas.toDataURL()); redoStack=[] }
+function undo(){ if(history.length<2) return; redoStack.push(history.pop()); load(history.at(-1)); }
+function redo(){ if(!redoStack.length) return; const s=redoStack.pop(); history.push(s); load(s); }
+function load(src){ const i=new Image(); i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0)}; i.src=src }
+
+// ===== PLIKI =====
+function newFile(){ ctx.clearRect(0,0,canvas.width,canvas.height); saveState() }
+function saveImage(){ const a=document.createElement('a'); a.href=canvas.toDataURL(); a.download='paint.png'; a.click() }
+function openImage(e){ const f=e.target.files[0]; if(!f) return; const i=new Image(); i.onload=()=>{ctx.clearRect(0,0,canvas.width,canvas.height);ctx.drawImage(i,0,0,canvas.width,canvas.height); saveState()}; i.src=URL.createObjectURL(f) }
+
+document.addEventListener('paste', e => {
+  for(const it of e.clipboardData.items){
+    if(it.type.startsWith('image')){
+      const f = it.getAsFile();
+      const i = new Image();
+      i.onload = ()=>{ctx.drawImage(i,0,0); saveState()};
+      i.src = URL.createObjectURL(f);
+    }
+  }
+});
+
+// ===== UI =====
+function setTab(t){ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active')); document.getElementById(t).classList.add('active') }
+function activeTab(){ return document.querySelector('.tab.active')?.id }
+function toggleTheme(){ document.body.classList.toggle('light') }
+
+// ===== AI (STABILNE) =====
+function runAI(){
+  const q=document.getElementById('aiInput').value.toLowerCase();
+  const log=document.getElementById('aiLog');
+  if(!q){log.innerText='Nic nie wpisano';return}
+  saveState();
+  if(q.includes('odwr')){invert();log.innerText='AI: odwrócono kolory';return}
+  if(q.includes('jas')){brighten();log.innerText='AI: rozjaśniono';return}
+  log.innerText='AI: brak akcji';
+}
+function invert(){const img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=255-img.data[i];img.data[i+1]=255-img.data[i+1];img.data[i+2]=255-img.data[i+2]}ctx.putImageData(img,0,0)}
+function brighten(){const img=ctx.getImageData(0,0,canvas.width,canvas.height);for(let i=0;i<img.data.length;i+=4){img.data[i]=Math.min(255,img.data[i]*1.15);img.data[i+1]=Math.min(255,img.data[i+1]*1.15);img.data[i+2]=Math.min(255,img.data[i+2]*1.15)}ctx.putImageData(img,0,0)}
+
+// init
+saveState();
 </script>
 </body>
 </html>
